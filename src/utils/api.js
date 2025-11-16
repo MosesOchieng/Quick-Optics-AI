@@ -2,7 +2,12 @@
  * API utility for connecting frontend to backend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+// Base URL for the backend API
+// Prefer VITE_API_URL if set (e.g. in Vercel), otherwise default to the Render backend
+const RAW_BASE_URL = import.meta.env.VITE_API_URL || 'https://quick-optics-backend.onrender.com'
+
+// Ensure we always talk to the /api prefix and avoid double slashes
+const API_BASE_URL = `${RAW_BASE_URL.replace(/\/+$/, '')}/api`
 
 const apiRequest = async (endpoint, options = {}) => {
   const token = localStorage.getItem('auth_token')
