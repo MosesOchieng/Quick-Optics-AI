@@ -23,3 +23,54 @@ dist-ssr
 *.sln
 *.sw?
 
+# Python / virtual environments
+.venv
+venv
+env
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Python build / artifacts
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter
+.ipynb_checkpoints
+
+# macOS / Linux misc
+.Trash
+*.swp
+*.swo
+
+# Training outputs and large models
+model_training/.venv/
+model_training/checkpoints/
+model_training/__pycache__/
+model_training/*.h5
+model_training/*.hdf5
+model_training/*.pb
+
+# Local env/config overrides
+.env
+.env.local
+.env.*.local
+
+# Logs (backend or other)
+backend/logs/
+
+
