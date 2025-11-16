@@ -247,8 +247,11 @@
 /* Mobile optimizations */
 @media (max-width: 480px) {
   .install-prompt {
-    bottom: 1rem;
+    top: 50%;
+    bottom: auto;
     width: 95%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     border-radius: 1.5rem;
   }
 

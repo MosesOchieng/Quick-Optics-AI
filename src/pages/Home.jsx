@@ -149,8 +149,8 @@ const Home = () => {
           <div className="steps">
             <div className="step">
               <div className="step-number">1</div>
-              <h3>Scan with your camera</h3>
-              <p>We guide you to align your face and run a short eye scan plus quick visual tests.</p>
+              <h3>Create your profile & start the eye test</h3>
+              <p>Sign up or log in, then we guide you to align your face and run a short, camera-based eye scan plus quick visual tests.</p>
             </div>
             <div className="step">
               <div className="step-number">2</div>
@@ -159,8 +159,8 @@ const Home = () => {
             </div>
             <div className="step">
               <div className="step-number">3</div>
-              <h3>Get a clear summary</h3>
-              <p>See friendly scores, risk indicators and suggestions for next steps or eyewear.</p>
+              <h3>Get a clear summary in your dashboard</h3>
+              <p>See friendly scores, risk indicators and suggestions for next steps or eyewear — results are only available when you&apos;re logged in.</p>
             </div>
           </div>
         </div>

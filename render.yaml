@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: quick-optics-backend
+    env: node
+    plan: free
+
+    # Only deploy the backend folder
+    rootDir: backend
+
+    buildCommand: |
+      npm install
+
+    startCommand: |
+      node server.js
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # You can override this in the Render dashboard if you want a stronger secret
+      - key: JWT_SECRET
+        value: dev_secret_change_in_production
+
+    healthCheckPath: /api/health
+
+
