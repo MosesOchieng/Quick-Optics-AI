@@ -1,0 +1,224 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import storage from '../utils/storage'
+import api from '../utils/api'
+import './Dashboard.css'
+
+const Dashboard = () => {
+  const navigate = useNavigate()
+  const [user, setUser] = useState(null)
+  const [testHistory, setTestHistory] = useState([])
+  const [recentTest, setRecentTest] = useState(null)
+
+  useEffect(() => {
+    // Load current user from backend session
+    const loadUser = async () => {
+      try {
+        const data = await api.getCurrentUser()
+        setUser(data.user)
+        localStorage.setItem('user_data', JSON.stringify(data.user))
+      } catch (err) {
+        // If not authenticated, redirect to login
+        navigate('/login')
+      }
+    }
+    loadUser()
+
+    // Load test history
+    const history = storage.getTestHistory()
+    setTestHistory(history)
+    if (history.length > 0) {
+      setRecentTest(history[0])
+    }
+  }, [])
+
+  const getOverallScore = () => {
+    if (!recentTest) return 0
+    return recentTest.overallScore || 85
+  }
+
+  const getScoreColor = (score) => {
+    if (score >= 80) return '#10b981'
+    if (score >= 60) return '#f59e0b'
+    return '#ef4444'
+  }
+
+  const coreTests = [
+    { id: 'myopia', label: 'Myopia (short‑sightedness)', icon: '🔍' },
+    { id: 'hyperopia', label: 'Hyperopia (long‑sightedness)', icon: '🕶️' },
+    { id: 'astigmatism', label: 'Astigmatism', icon: '✨' },
+    { id: 'color', label: 'Color vision', icon: '🎨' }
+  ]
+
+  return (
+    <div className="dashboard">
+      <div className="dashboard-container">
+        <div className="dashboard-header">
+          <h1>Welcome back{user?.name ? `, ${user.name}` : ''}!</h1>
+          <p>Your vision health overview</p>
+        </div>
+
+        {recentTest ? (
+          <div className="dashboard-content">
+            <motion.div
+              className="score-card"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="score-circle">
+                <svg className="score-svg" viewBox="0 0 120 120">
+                  <circle
+                    className="score-bg"
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    fill="none"
+                    stroke="#e5e7eb"
+                    strokeWidth="10"
+                  />
+                  <circle
+                    className="score-progress"
+                    cx="60"
+                    cy="60"
+                    r="50"
+                    fill="none"
+                    stroke={getScoreColor(getOverallScore())}
+                    strokeWidth="10"
+                    strokeDasharray={`${(getOverallScore() / 100) * 314} 314`}
+                    strokeDashoffset="78.5"
+                    transform="rotate(-90 60 60)"
+                  />
+                </svg>
+                <div className="score-value">
+                  <span className="score-number">{getOverallScore()}</span>
+                  <span className="score-label">Overall Score</span>
+                </div>
+              </div>
+              <div className="score-details">
+                <p className="score-date">
+                  Last test: {new Date(recentTest.timestamp || Date.now()).toLocaleDateString()}
+                </p>
+                <p className="score-status">
+                  {getOverallScore() >= 80 ? '✓ Good' : getOverallScore() >= 60 ? '⚠ Fair' : '⚠ Needs Attention'}
+                </p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              className="quick-actions"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <h2>Quick Actions</h2>
+              <div className="actions-grid">
+                <button
+                  className="action-card"
+                  onClick={() => navigate('/eye-scan')}
+                >
+                  <span className="action-icon">👁️</span>
+                  <span className="action-label">Start Eye Scan</span>
+                </button>
+                <button
+                  className="action-card"
+                  onClick={() => navigate('/results')}
+                >
+                  <span className="action-icon">📊</span>
+                  <span className="action-label">View Results</span>
+                </button>
+                <button
+                  className="action-card"
+                  onClick={() => navigate('/vision-trainer')}
+                >
+                  <span className="action-icon">🎮</span>
+                  <span className="action-label">Vision Trainer</span>
+                </button>
+                <button
+                  className="action-card"
+                  onClick={() => navigate('/profile')}
+                >
+                  <span className="action-icon">👤</span>
+                  <span className="action-label">Profile</span>
+                </button>
+              </div>
+            </motion.div>
+
+            {testHistory.length > 0 && (
+              <motion.div
+                className="test-history"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <h2>Recent Tests</h2>
+                <div className="history-list">
+                  {testHistory.slice(0, 5).map((test, index) => (
+                    <div key={index} className="history-item">
+                      <div className="history-date">
+                        {new Date(test.timestamp || Date.now()).toLocaleDateString()}
+                      </div>
+                      <div className="history-score">
+                        Score: {test.overallScore || 85}
+                      </div>
+                      <button
+                        className="history-view"
+                        onClick={() => navigate('/results', { state: { results: test.results } })}
+                      >
+                        View →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            <motion.div
+              className="test-hub"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35 }}
+            >
+              <h2>Test Hub</h2>
+              <p className="test-hub-subtitle">
+                Jump back into the core Quick Optics AI tests any time.
+              </p>
+              <div className="test-hub-grid">
+                {coreTests.map(test => (
+                  <button
+                    key={test.id}
+                    className="test-hub-card"
+                    onClick={() => navigate('/vision-tests')}
+                  >
+                    <span className="test-hub-icon">{test.icon}</span>
+                    <span className="test-hub-label">{test.label}</span>
+                    <span className="test-hub-cta">Open tests →</span>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        ) : (
+          <motion.div
+            className="empty-dashboard"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="empty-icon">👁️</div>
+            <h2>No eye health data yet</h2>
+            <p>Run your first eye scan to unlock your AI eye health overview.</p>
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate('/eye-scan')}
+            >
+              Start Eye Scan
+            </button>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+export default Dashboard
