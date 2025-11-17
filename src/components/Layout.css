@@ -32,7 +32,17 @@
 }
 
 .logo-icon {
-  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  background-image: url('/Logo.jpeg');
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: inline-block;
+  text-indent: -9999px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
 }
 
 .nav-links {

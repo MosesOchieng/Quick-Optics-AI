@@ -44,7 +44,8 @@
 }
 
 .auth-logo .logo-icon {
-  font-size: 2.5rem;
+  width: 56px;
+  height: 56px;
 }
 
 .auth-logo h1 {

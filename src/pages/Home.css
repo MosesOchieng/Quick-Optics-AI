@@ -34,7 +34,16 @@
 }
 
 .logo-icon-large {
-  font-size: 4rem;
+  width: 72px;
+  height: 72px;
+  background-image: url('/Logo.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: inline-block;
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  text-indent: -9999px;
 }
 
 .logo-text-large {
@@ -818,7 +827,8 @@
   }
 
   .logo-icon-large {
-    font-size: 3rem;
+    width: 56px;
+    height: 56px;
   }
 
   .btn {
