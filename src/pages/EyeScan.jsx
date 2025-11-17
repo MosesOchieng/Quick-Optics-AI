@@ -42,13 +42,6 @@ const EyeScan = () => {
   ]
 
   useEffect(() => {
-    // Require login before eye scan
-    const token = localStorage.getItem('auth_token')
-    if (!token) {
-      navigate('/login')
-      return
-    }
-
     startCamera()
     return () => {
       stopCamera()

@@ -20,12 +20,6 @@ const VisionTests = () => {
   const [aiAnalysis, setAiAnalysis] = useState(null)
 
     useEffect(() => {
-      const token = localStorage.getItem('auth_token')
-      if (!token) {
-        navigate('/login')
-        return
-      }
-
     // Load AI analysis from eye scan if available
     if (location.state?.aiAnalysis) {
       setAiAnalysis(location.state.aiAnalysis)
