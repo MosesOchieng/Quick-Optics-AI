@@ -47,6 +47,9 @@ const Home = () => {
               <Link to="/how-it-works" className="btn btn-secondary btn-ghost">
                 See how it works
               </Link>
+              <Link to="/start-test" className="btn btn-secondary">
+                Eye test process
+              </Link>
             </div>
             <div className="hero-meta">
               <div className="meta-pill">⏱️ 5–7 minute screening</div>
