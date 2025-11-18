@@ -195,7 +195,7 @@ const Dashboard = () => {
                 transition={{ delay: 0.3 }}
               >
                 <div className="history-header">
-                  <h2>Recent Tests</h2>
+                <h2>Recent Tests</h2>
                   <div className="history-filters">
                     <input
                       type="text"
@@ -217,24 +217,24 @@ const Dashboard = () => {
                   </div>
                 </div>
                 {getFilteredHistory().length > 0 ? (
-                  <div className="history-list">
+                <div className="history-list">
                     {getFilteredHistory().slice(0, 5).map((test, index) => (
-                      <div key={index} className="history-item">
-                        <div className="history-date">
-                          {new Date(test.timestamp || Date.now()).toLocaleDateString()}
-                        </div>
-                        <div className="history-score">
-                          Score: {test.overallScore || 85}
-                        </div>
-                        <button
-                          className="history-view"
-                          onClick={() => navigate('/results', { state: { results: test.results } })}
-                        >
-                          View →
-                        </button>
+                    <div key={index} className="history-item">
+                      <div className="history-date">
+                        {new Date(test.timestamp || Date.now()).toLocaleDateString()}
                       </div>
-                    ))}
-                  </div>
+                      <div className="history-score">
+                        Score: {test.overallScore || 85}
+                      </div>
+                      <button
+                        className="history-view"
+                        onClick={() => navigate('/results', { state: { results: test.results } })}
+                      >
+                        View →
+                      </button>
+                    </div>
+                  ))}
+                </div>
                 ) : (
                   <EmptyState
                     icon="🔍"

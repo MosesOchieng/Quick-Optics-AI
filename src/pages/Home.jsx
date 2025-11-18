@@ -66,53 +66,152 @@ const Home = () => {
             <div className="phone-mockup">
               <div className="phone-screen">
                 <div className="mockup-camera-view">
+                  {/* Status Bar */}
+                  <div className="mockup-status-bar">
+                    <div className="status-time">9:41</div>
+                    <div className="status-icons">
+                      <span className="signal-icon">📶</span>
+                      <span className="wifi-icon">📶</span>
+                      <span className="battery-icon">🔋</span>
+                    </div>
+                  </div>
+                  
+                  {/* AI Analysis Header */}
+                  <div className="ai-analysis-header">
+                    <div className="ai-status-indicator">
+                      <div className="ai-pulse"></div>
+                      <span>AI Analyzing...</span>
+                    </div>
+                    <div className="scan-progress-bar">
+                      <div className="scan-progress-fill"></div>
+                    </div>
+                  </div>
+
                   <div className="eye-container">
                     <div className="eye">
                       <div className="eyeball">
                         <div className="pupil"></div>
                         <div className="iris-pattern"></div>
+                        <div className="iris-detail"></div>
                       </div>
                       <div className="eyelid top"></div>
                       <div className="eyelid bottom"></div>
                     </div>
-                    <div className="alignment-box"></div>
-                    <div className="scan-line"></div>
+                    
+                    {/* Enhanced Alignment Box */}
+                    <div className="alignment-box">
+                      <div className="alignment-corner top-left"></div>
+                      <div className="alignment-corner top-right"></div>
+                      <div className="alignment-corner bottom-left"></div>
+                      <div className="alignment-corner bottom-right"></div>
+                      <div className="alignment-center"></div>
+                    </div>
+                    
+                    {/* Multi-directional scan lines */}
+                    <div className="scan-line horizontal"></div>
+                    <div className="scan-line vertical"></div>
+                    <div className="scan-line diagonal-1"></div>
+                    <div className="scan-line diagonal-2"></div>
+                    
+                    {/* Enhanced particles with trails */}
                     <div className="scan-particles">
-                      {Array.from({ length: 8 }).map((_, i) => (
-                        <div key={i} className="particle" style={{ '--delay': i * 0.2 + 's' }}></div>
+                      {Array.from({ length: 12 }).map((_, i) => (
+                        <div key={i} className="particle" style={{ '--delay': i * 0.15 + 's', '--index': i }}>
+                          <div className="particle-trail"></div>
+                        </div>
                       ))}
                     </div>
-                    {/* Animated arrows pointing to conditions */}
-                    <div className="condition-arrows">
-                      {[
-                        { id: 'myopia', label: 'Myopia', position: { top: '15%', left: '10%' }, delay: 0 },
-                        { id: 'hyperopia', label: 'Hyperopia', position: { top: '15%', right: '10%' }, delay: 1 },
-                        { id: 'astigmatism', label: 'Astigmatism', position: { bottom: '15%', left: '10%' }, delay: 2 },
-                        { id: 'focus', label: 'Focus', position: { bottom: '15%', right: '10%' }, delay: 3 }
-                      ].map((condition, i) => (
+                    
+                    {/* AI Data Points */}
+                    <div className="ai-data-points">
+                      {Array.from({ length: 6 }).map((_, i) => (
                         <motion.div
-                          key={condition.id}
-                          className="condition-arrow"
-                          style={condition.position}
+                          key={i}
+                          className="data-point"
+                          style={{
+                            '--angle': (i * 60) + 'deg',
+                            '--radius': '120px'
+                          }}
                           initial={{ opacity: 0, scale: 0 }}
                           animate={{ 
                             opacity: [0, 1, 1, 0],
                             scale: [0, 1, 1, 0]
                           }}
                           transition={{
-                            duration: 3,
-                            delay: condition.delay + (i * 0.5),
+                            duration: 2,
+                            delay: i * 0.3,
                             repeat: Infinity,
-                            repeatDelay: 2,
-                            ease: "easeInOut"
+                            repeatDelay: 1
                           }}
                         >
-                          <div className="arrow-line"></div>
-                          <div className="arrow-head"></div>
-                          <div className="arrow-label">{condition.label}</div>
+                          <div className="data-point-pulse"></div>
                         </motion.div>
                       ))}
                     </div>
+                    
+                    {/* Real-time Metrics */}
+                    <div className="real-time-metrics">
+                      <motion.div 
+                        className="metric-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1, duration: 0.5 }}
+                      >
+                        <div className="metric-label">Focus</div>
+                        <div className="metric-value">98%</div>
+                        <div className="metric-bar">
+                          <div className="metric-fill" style={{ width: '98%' }}></div>
+                        </div>
+                      </motion.div>
+                      <motion.div 
+                        className="metric-card"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.2, duration: 0.5 }}
+                      >
+                        <div className="metric-label">Alignment</div>
+                        <div className="metric-value">95%</div>
+                        <div className="metric-bar">
+                          <div className="metric-fill" style={{ width: '95%' }}></div>
+                        </div>
+                      </motion.div>
+                    </div>
+                    
+                    {/* Condition Detection Badges */}
+                    <div className="condition-badges">
+                      {[
+                        { id: 'myopia', label: 'Myopia', value: '12%', color: '#3b82f6', delay: 2 },
+                        { id: 'hyperopia', label: 'Hyperopia', value: '5%', color: '#10b981', delay: 2.5 },
+                        { id: 'astigmatism', label: 'Astigmatism', value: '8%', color: '#f59e0b', delay: 3 }
+                      ].map((condition) => (
+                        <motion.div
+                          key={condition.id}
+                          className="condition-badge"
+                          initial={{ opacity: 0, scale: 0, x: -20 }}
+                          animate={{ opacity: 1, scale: 1, x: 0 }}
+                          transition={{
+                            delay: condition.delay,
+                            duration: 0.5,
+                            repeat: Infinity,
+                            repeatType: "reverse",
+                            repeatDelay: 4
+                          }}
+                          style={{ '--badge-color': condition.color }}
+                        >
+                          <div className="badge-icon">✓</div>
+                          <div className="badge-content">
+                            <div className="badge-label">{condition.label}</div>
+                            <div className="badge-value">{condition.value}</div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Bottom Action Bar */}
+                  <div className="mockup-action-bar">
+                    <div className="action-button">Stop Scan</div>
+                    <div className="action-button primary">Analyzing...</div>
                   </div>
                 </div>
               </div>

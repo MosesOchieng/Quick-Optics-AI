@@ -7,15 +7,15 @@ const Layout = ({ children }) => {
   const isHomePage = location.pathname === '/'
   const isOnboarding = location.pathname === '/onboarding'
   const isAuthPage = ['/login', '/signup', '/payment-confirmation'].includes(location.pathname)
+  const isEyeScanPage = location.pathname === '/eye-scan'
 
   return (
     <div className="layout">
-      {!isHomePage && !isOnboarding && !isAuthPage && (
+      {!isHomePage && !isOnboarding && !isAuthPage && !isEyeScanPage && (
         <nav className="navbar">
           <div className="nav-container">
             <Link to="/" className="nav-logo">
-              <span className="logo-icon">👁️</span>
-              <span className="logo-text">Quick Optics AI</span>
+              <img src="/Logo.jpeg" alt="Quick Optics AI" className="nav-logo-image" />
             </Link>
             <div className="nav-links">
               <Link to="/" className="nav-link">Home</Link>
@@ -29,7 +29,7 @@ const Layout = ({ children }) => {
         </nav>
       )}
       <main className="main-content">{children}</main>
-      {!isOnboarding && !isAuthPage && (
+      {!isOnboarding && !isAuthPage && !isEyeScanPage && (
       <footer className="footer">
         <div className="footer-container">
           <div className="footer-section">

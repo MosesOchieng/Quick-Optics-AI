@@ -19,17 +19,11 @@ const InstallPrompt = () => {
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
     setIsIOS(iOS)
 
-    // Check if user has dismissed before
-    const dismissed = localStorage.getItem('install_prompt_dismissed')
-    if (dismissed) {
-      return
-    }
-
     // Handle beforeinstallprompt event (Chrome/Edge on Android/Desktop)
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault()
       setDeferredPrompt(e)
-      setTimeout(() => setShowPrompt(true), 2000) // Show after 2 seconds
+        setTimeout(() => setShowPrompt(true), 2000) // Show after 2 seconds
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
@@ -48,8 +42,8 @@ const InstallPrompt = () => {
         setShowPrompt(true)
       }, 5000) // Show after 5 seconds as fallback
 
-      return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
         clearTimeout(fallbackTimer)
       }
     }
@@ -71,7 +65,7 @@ const InstallPrompt = () => {
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    localStorage.setItem('install_prompt_dismissed', 'true')
+    // Don't save dismissal - show again on next page load
   }
 
   if (isStandalone || !showPrompt) return null
@@ -101,7 +95,7 @@ const InstallPrompt = () => {
             <div className="install-content">
               <div className="install-icon">
                 <div className="icon-circle">
-                  <span className="icon-emoji">👁️</span>
+                  <img src="/Logo.jpeg" alt="Quick Optics AI" className="logo-image" />
                 </div>
                 <div className="icon-badge">+</div>
               </div>

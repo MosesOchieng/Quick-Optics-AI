@@ -718,7 +718,7 @@ const EyeScan = () => {
             // Finish explainable AI log
             explainableAILog.finishScan()
           setAnalysisPhase('Complete')
-            
+
             setTimeout(() => {
               navigate('/vision-tests', { 
                 state: { 
@@ -1015,7 +1015,7 @@ const EyeScan = () => {
       // Small delay to ensure cancel takes effect
       setTimeout(() => {
         window.speechSynthesis.speak(utterance)
-      }, 100)
+    }, 100)
       
       console.log('Speaking:', message)
     } catch (error) {
@@ -1036,7 +1036,7 @@ const EyeScan = () => {
       const timer = setTimeout(() => {
         // Double-check face is still detected before starting
         if (faceDetected) {
-          startScan()
+        startScan()
         } else {
           const msg = 'Face detection lost. Please reposition your face.'
           setAiMessage(msg)
@@ -1054,7 +1054,7 @@ const EyeScan = () => {
         {/* Side-by-side layout: Camera on left, Dataset comparison on right */}
         <div className="scan-layout">
           {/* Left side: Camera view */}
-          <div className="camera-view">
+        <div className="camera-view">
           {/* Zoom controls */}
           <div className="zoom-controls">
             <button 
@@ -1362,18 +1362,18 @@ const EyeScan = () => {
               >
                 📥 Download Evidence
               </button>
-            </div>
+              </div>
             <div className="probability-list">
               {conditionProbabilities.map((prob) => (
                 <div key={prob.label} className="probability-item">
                   <span className="probability-label">{prob.label}</span>
                   <div className="probability-bar">
                     <div className="probability-fill" style={{ width: `${prob.value}%` }} />
-                  </div>
-                  <span className="probability-value">{prob.value}%</span>
-                </div>
-              ))}
             </div>
+                  <span className="probability-value">{prob.value}%</span>
+          </div>
+              ))}
+        </div>
             
             {/* Cloud vs On-Device Comparison */}
             {cloudComparison && (

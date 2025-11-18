@@ -25,21 +25,15 @@
 .nav-logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
   font-weight: 700;
   font-size: 1.25rem;
   color: var(--primary-teal);
 }
 
-.logo-icon {
-  width: 40px;
-  height: 40px;
-  background-image: url('/Logo.jpeg');
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  display: inline-block;
-  text-indent: -9999px;
+.nav-logo-image {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
   flex-shrink: 0;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.1);
