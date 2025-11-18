@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import storage from '../utils/storage'
 import api from '../utils/api'
+import EmptyState from '../components/EmptyState'
 import './Dashboard.css'
 
 const Dashboard = () => {
@@ -10,17 +11,27 @@ const Dashboard = () => {
   const [user, setUser] = useState(null)
   const [testHistory, setTestHistory] = useState([])
   const [recentTest, setRecentTest] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterDate, setFilterDate] = useState('all') // 'all', 'week', 'month', 'year'
 
   useEffect(() => {
-    // Load current user from backend session
+    // Load current user from backend session (optional - don't redirect if not authenticated)
     const loadUser = async () => {
       try {
         const data = await api.getCurrentUser()
         setUser(data.user)
         localStorage.setItem('user_data', JSON.stringify(data.user))
       } catch (err) {
-        // If not authenticated, redirect to login
-        navigate('/login')
+        // If not authenticated, try to load from localStorage
+        const savedUser = localStorage.getItem('user')
+        if (savedUser) {
+          try {
+            setUser(JSON.parse(savedUser))
+          } catch (e) {
+            console.log('No saved user data')
+          }
+        }
+        // Don't redirect - allow using the app without login
       }
     }
     loadUser()
@@ -42,6 +53,37 @@ const Dashboard = () => {
     if (score >= 80) return '#10b981'
     if (score >= 60) return '#f59e0b'
     return '#ef4444'
+  }
+
+  const getFilteredHistory = () => {
+    let filtered = [...testHistory]
+
+    // Filter by date
+    if (filterDate !== 'all') {
+      const now = Date.now()
+      const filterMap = {
+        week: 7 * 24 * 60 * 60 * 1000,
+        month: 30 * 24 * 60 * 60 * 1000,
+        year: 365 * 24 * 60 * 60 * 1000
+      }
+      const cutoff = now - filterMap[filterDate]
+      filtered = filtered.filter(test => {
+        const testDate = new Date(test.timestamp || Date.now()).getTime()
+        return testDate >= cutoff
+      })
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(test => {
+        const dateStr = new Date(test.timestamp || Date.now()).toLocaleDateString()
+        const scoreStr = String(test.overallScore || '')
+        return dateStr.includes(query) || scoreStr.includes(query)
+      })
+    }
+
+    return filtered
   }
 
   const coreTests = [
@@ -152,25 +194,59 @@ const Dashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <h2>Recent Tests</h2>
-                <div className="history-list">
-                  {testHistory.slice(0, 5).map((test, index) => (
-                    <div key={index} className="history-item">
-                      <div className="history-date">
-                        {new Date(test.timestamp || Date.now()).toLocaleDateString()}
-                      </div>
-                      <div className="history-score">
-                        Score: {test.overallScore || 85}
-                      </div>
-                      <button
-                        className="history-view"
-                        onClick={() => navigate('/results', { state: { results: test.results } })}
-                      >
-                        View →
-                      </button>
-                    </div>
-                  ))}
+                <div className="history-header">
+                  <h2>Recent Tests</h2>
+                  <div className="history-filters">
+                    <input
+                      type="text"
+                      placeholder="Search tests..."
+                      className="history-search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <select
+                      className="history-filter"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                    >
+                      <option value="all">All Time</option>
+                      <option value="week">Last Week</option>
+                      <option value="month">Last Month</option>
+                      <option value="year">Last Year</option>
+                    </select>
+                  </div>
                 </div>
+                {getFilteredHistory().length > 0 ? (
+                  <div className="history-list">
+                    {getFilteredHistory().slice(0, 5).map((test, index) => (
+                      <div key={index} className="history-item">
+                        <div className="history-date">
+                          {new Date(test.timestamp || Date.now()).toLocaleDateString()}
+                        </div>
+                        <div className="history-score">
+                          Score: {test.overallScore || 85}
+                        </div>
+                        <button
+                          className="history-view"
+                          onClick={() => navigate('/results', { state: { results: test.results } })}
+                        >
+                          View →
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyState
+                    icon="🔍"
+                    title="No tests found"
+                    message="Try adjusting your search or filter criteria."
+                    actionLabel="Clear Filters"
+                    onAction={() => {
+                      setSearchQuery('')
+                      setFilterDate('all')
+                    }}
+                  />
+                )}
               </motion.div>
             )}
 
@@ -200,21 +276,13 @@ const Dashboard = () => {
             </motion.div>
           </div>
         ) : (
-          <motion.div
-            className="empty-dashboard"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <div className="empty-icon">👁️</div>
-            <h2>No eye health data yet</h2>
-            <p>Run your first eye scan to unlock your AI eye health overview.</p>
-            <button
-              className="btn btn-primary"
-              onClick={() => navigate('/eye-scan')}
-            >
-              Start Eye Scan
-            </button>
-          </motion.div>
+          <EmptyState
+            icon="👁️"
+            title="No eye health data yet"
+            message="Run your first eye scan to unlock your AI eye health overview and track your vision health over time."
+            actionLabel="Start Eye Scan"
+            onAction={() => navigate('/eye-scan')}
+          />
         )}
       </div>
     </div>

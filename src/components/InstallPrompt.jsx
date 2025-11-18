@@ -19,30 +19,39 @@ const InstallPrompt = () => {
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
     setIsIOS(iOS)
 
-    // Handle beforeinstallprompt event
+    // Check if user has dismissed before
+    const dismissed = localStorage.getItem('install_prompt_dismissed')
+    if (dismissed) {
+      return
+    }
+
+    // Handle beforeinstallprompt event (Chrome/Edge on Android/Desktop)
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault()
       setDeferredPrompt(e)
-      
-      // Check if user has dismissed before
-      const dismissed = localStorage.getItem('install_prompt_dismissed')
-      if (!dismissed) {
-        setTimeout(() => setShowPrompt(true), 2000) // Show after 2 seconds
-      }
+      setTimeout(() => setShowPrompt(true), 2000) // Show after 2 seconds
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
 
-    // For iOS, show custom instructions
+    // For iOS, always show custom instructions after delay
     if (iOS) {
-      const dismissed = localStorage.getItem('install_prompt_dismissed')
-      if (!dismissed) {
-        setTimeout(() => setShowPrompt(true), 2000)
+      const iosTimer = setTimeout(() => setShowPrompt(true), 3000)
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+        clearTimeout(iosTimer)
       }
-    }
+    } else {
+      // For other browsers/platforms, show prompt after delay if not already shown
+      // This ensures it shows on Vercel even if beforeinstallprompt doesn't fire
+      const fallbackTimer = setTimeout(() => {
+        setShowPrompt(true)
+      }, 5000) // Show after 5 seconds as fallback
 
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      return () => {
+        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+        clearTimeout(fallbackTimer)
+      }
     }
   }, [])
 

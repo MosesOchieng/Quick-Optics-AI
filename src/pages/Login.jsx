@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import api from '../utils/api'
+import Toast from '../components/Toast'
 import './Auth.css'
 
 const Login = () => {
@@ -13,21 +14,42 @@ const Login = () => {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setShowSuccess(false)
+
+    // Basic validation
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields')
+      return
+    }
 
     setLoading(true)
 
     try {
       const response = await api.login(formData.email, formData.password)
       
+      // Store auth data
       localStorage.setItem('auth_token', response.token)
       localStorage.setItem('user', JSON.stringify(response.user))
-      navigate('/dashboard')
+      localStorage.setItem('user_data', JSON.stringify(response.user))
+      
+      // Show success message
+      setSuccessMessage(`Welcome back, ${response.user?.name || 'User'}!`)
+      setShowSuccess(true)
+      
+      // Navigate after a short delay to show success message
+      setTimeout(() => {
+        navigate('/dashboard')
+      }, 1500)
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your OTP code.')
+      const errorMessage = err.message || 'Login failed. Please check your email and password.'
+      setError(errorMessage)
+      console.error('Login error:', err)
     } finally {
       setLoading(false)
     }
@@ -35,6 +57,15 @@ const Login = () => {
 
   return (
     <div className="auth-page">
+      {showSuccess && (
+        <Toast
+          message={successMessage}
+          type="success"
+          duration={3000}
+          onClose={() => setShowSuccess(false)}
+        />
+      )}
+      
       <div className="auth-container">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -58,6 +89,16 @@ const Login = () => {
                 className="error-message"
               >
                 {error}
+              </motion.div>
+            )}
+            
+            {location.state?.message && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="info-message"
+              >
+                {location.state.message}
               </motion.div>
             )}
 

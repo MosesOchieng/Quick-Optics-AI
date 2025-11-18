@@ -4,10 +4,17 @@
 
 // Base URL for the backend API
 // Prefer VITE_API_URL if set (e.g. in Vercel), otherwise default to the Render backend
+// To configure: Set VITE_API_URL environment variable in Vercel to your Render backend URL
 const RAW_BASE_URL = import.meta.env.VITE_API_URL || 'https://quick-optics-backend.onrender.com'
 
 // Ensure we always talk to the /api prefix and avoid double slashes
 const API_BASE_URL = `${RAW_BASE_URL.replace(/\/+$/, '')}/api`
+
+// Log API URL in development for debugging
+if (import.meta.env.DEV) {
+  console.log('🔗 API Base URL:', API_BASE_URL)
+  console.log('📡 Backend URL:', RAW_BASE_URL)
+}
 
 const apiRequest = async (endpoint, options = {}) => {
   const token = localStorage.getItem('auth_token')
@@ -26,14 +33,39 @@ const apiRequest = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config)
-    const data = await response.json()
+    
+    // Handle non-JSON responses
+    let data
+    const contentType = response.headers.get('content-type')
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json()
+    } else {
+      const text = await response.text()
+      try {
+        data = JSON.parse(text)
+      } catch {
+        data = { message: text || 'Request failed' }
+      }
+    }
     
     if (!response.ok) {
-      throw new Error(data.message || 'Request failed')
+      // Don't throw for 401/403 if it's an optional auth endpoint
+      if (response.status === 401 || response.status === 403) {
+        // Clear invalid token
+        if (token) {
+          localStorage.removeItem('auth_token')
+        }
+      }
+      throw new Error(data.message || `Request failed with status ${response.status}`)
     }
     
     return data
   } catch (error) {
+    // Network errors or CORS issues
+    if (error.name === 'TypeError' || error.message.includes('fetch')) {
+      console.error('API Connection Error:', error)
+      throw new Error('Unable to connect to server. Please check your connection.')
+    }
     console.error('API Error:', error)
     throw error
   }
@@ -95,16 +127,32 @@ export const api = {
     return apiRequest('/auth/me')
   },
 
-  // Test Results
+  // Test Results (optional auth - works without login)
   async saveTestResult(result) {
-    return apiRequest('/tests/results', {
-      method: 'POST',
-      body: result
-    })
+    try {
+      return await apiRequest('/tests/results', {
+        method: 'POST',
+        body: result
+      })
+    } catch (error) {
+      // If save fails, store locally as fallback
+      console.warn('Failed to save test result to server, storing locally:', error)
+      const localResults = JSON.parse(localStorage.getItem('local_test_results') || '[]')
+      localResults.push({ ...result, timestamp: new Date().toISOString() })
+      localStorage.setItem('local_test_results', JSON.stringify(localResults))
+      return { success: true, savedLocally: true }
+    }
   },
 
   async getTestResults() {
-    return apiRequest('/tests/results')
+    try {
+      return await apiRequest('/tests/results')
+    } catch (error) {
+      // If fetch fails, return local results
+      console.warn('Failed to fetch test results from server, using local:', error)
+      const localResults = JSON.parse(localStorage.getItem('local_test_results') || '[]')
+      return { results: localResults, fromLocal: true }
+    }
   },
 
   // Game Results

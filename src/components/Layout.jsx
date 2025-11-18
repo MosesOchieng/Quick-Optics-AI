@@ -22,6 +22,8 @@ const Layout = ({ children }) => {
               <Link to="/dashboard" className="nav-link">Dashboard</Link>
               <Link to="/vision-trainer" className="nav-link">Trainer</Link>
               <Link to="/profile" className="nav-link">Profile</Link>
+              <Link to="/settings" className="nav-link">Settings</Link>
+              <Link to="/contact" className="nav-link">Contact</Link>
             </div>
           </div>
         </nav>
@@ -45,6 +47,7 @@ const Layout = ({ children }) => {
           </div>
           <div className="footer-section">
             <h4>Contact</h4>
+            <Link to="/contact">Contact Us</Link>
             <a href="mailto:support@quickoptics.ai">support@quickoptics.ai</a>
           </div>
         </div>

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import storage from '../utils/storage'
 import api from '../utils/api'
+import EmptyState from '../components/EmptyState'
 import './Profile.css'
 
 const Profile = () => {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('history')
   const [testHistory, setTestHistory] = useState([])
   const [prescriptions, setPrescriptions] = useState([])
@@ -112,9 +115,13 @@ const Profile = () => {
               </div>
               <div className="history-cards">
                 {testHistory.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No test history yet. Take your first vision test to get started!</p>
-                  </div>
+                  <EmptyState
+                    icon="📊"
+                    title="No test history yet"
+                    message="Take your first vision test to get started and track your eye health over time."
+                    actionLabel="Start Test"
+                    onAction={() => navigate('/eye-scan')}
+                  />
                 ) : (
                   testHistory.map((test) => (
                     <div key={test.id} className="history-card">
@@ -156,9 +163,13 @@ const Profile = () => {
               </div>
               <div className="prescription-cards">
                 {prescriptions.length === 0 ? (
-                  <div className="empty-state">
-                    <p>No prescriptions saved yet. Your test results will appear here.</p>
-                  </div>
+                  <EmptyState
+                    icon="👓"
+                    title="No prescriptions saved"
+                    message="Your test results and prescriptions will appear here once you complete vision tests."
+                    actionLabel="Take a Test"
+                    onAction={() => navigate('/eye-scan')}
+                  />
                 ) : (
                   prescriptions.map((prescription) => (
                     <div key={prescription.id} className="prescription-card">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import api from '../utils/api'
+import Toast from '../components/Toast'
 import './Auth.css'
 
 const Signup = () => {
@@ -14,10 +15,19 @@ const Signup = () => {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    setShowSuccess(false)
+
+    // Validation
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
+      setError('Please fill in all fields')
+      return
+    }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match')
@@ -29,14 +39,35 @@ const Signup = () => {
       return
     }
 
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address')
+      return
+    }
+
     setLoading(true)
 
     try {
-      await api.signup(formData.name, formData.email, formData.password)
-      // After signup, send them to login with email prefilled
-      navigate('/login', { state: { email: formData.email } })
+      const response = await api.signup(formData.name, formData.email, formData.password)
+      
+      // Show success message
+      setSuccessMessage(`Account created successfully! Please check your email for verification code.`)
+      setShowSuccess(true)
+      
+      // Navigate to login after showing success message
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            email: formData.email,
+            message: 'Account created! Please login with your email and password.'
+          } 
+        })
+      }, 2000)
     } catch (err) {
-      setError(err.message || 'Signup failed. Please try again.')
+      const errorMessage = err.message || 'Signup failed. Please try again.'
+      setError(errorMessage)
+      console.error('Signup error:', err)
     } finally {
       setLoading(false)
     }
@@ -44,6 +75,15 @@ const Signup = () => {
 
   return (
     <div className="auth-page">
+      {showSuccess && (
+        <Toast
+          message={successMessage}
+          type="success"
+          duration={3000}
+          onClose={() => setShowSuccess(false)}
+        />
+      )}
+      
       <div className="auth-container">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

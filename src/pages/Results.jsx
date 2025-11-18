@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import storage from '../utils/storage'
 import cvie from '../services/CVIE'
+import exportToPDF from '../utils/pdfExport'
+import Toast from '../components/Toast'
 import './Results.css'
 
 const Results = () => {
@@ -11,6 +13,8 @@ const Results = () => {
   const [expandedCard, setExpandedCard] = useState(null)
   const [hasPaid, setHasPaid] = useState(false)
   const [aiAnalysis, setAiAnalysis] = useState(null)
+  const [showToast, setShowToast] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
 
   // Save results to storage when component mounts
   useEffect(() => {
@@ -333,13 +337,53 @@ const Results = () => {
         )}
 
         <div className="results-actions">
-          <button
-            className="btn btn-primary btn-large"
-            onClick={() => navigate('/payment', { state: { results: location.state?.results } })}
-          >
-            Unlock Full Report - Pay Now
-          </button>
+          <div className="action-buttons">
+            <button
+              className="btn btn-secondary"
+              onClick={async () => {
+                try {
+                  const userData = JSON.parse(localStorage.getItem('user_data') || 'null')
+                  await exportToPDF({
+                    user: userData,
+                    testResults: results,
+                    aiAnalysis: aiAnalysis,
+                    recommendations: conditions.map(c => c.correction).filter(Boolean)
+                  }, 'vision-test-report')
+                  setToastMessage('Report exported successfully!')
+                  setShowToast(true)
+                } catch (error) {
+                  console.error('Export failed:', error)
+                  setToastMessage('Export failed. Please try again.')
+                  setShowToast(true)
+                }
+              }}
+            >
+              📥 Export PDF
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => window.print()}
+            >
+              🖨️ Print
+            </button>
+            {!hasPaid && (
+              <button
+                className="btn btn-primary btn-large"
+                onClick={() => navigate('/payment', { state: { results: location.state?.results } })}
+              >
+                Unlock Full Report - Pay Now
+              </button>
+            )}
+          </div>
         </div>
+        
+        {showToast && (
+          <Toast
+            message={toastMessage}
+            type="success"
+            onClose={() => setShowToast(false)}
+          />
+        )}
       </div>
     </div>
   )

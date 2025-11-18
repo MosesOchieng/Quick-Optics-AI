@@ -1,0 +1,121 @@
+.not-found {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--gray-900);
+}
+
+.not-found-container {
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 1rem;
+  padding: 3rem 2rem;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.not-found-icon {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.not-found-title {
+  font-size: 6rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #14b8a6, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+  line-height: 1;
+}
+
+.not-found-subtitle {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin-bottom: 1rem;
+}
+
+.not-found-message {
+  font-size: 1.1rem;
+  color: #9ca3af;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.not-found-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.not-found-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
+  border: none;
+}
+
+.not-found-btn.primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.not-found-btn.primary:hover {
+  background: #2563eb;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.not-found-btn.secondary {
+  background: rgba(148, 163, 184, 0.2);
+  color: #e5e7eb;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.not-found-btn.secondary:hover {
+  background: rgba(148, 163, 184, 0.3);
+}
+
+.not-found-links {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.not-found-links a {
+  color: #14b8a6;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.not-found-links a:hover {
+  color: #10b981;
+  text-decoration: underline;
+}
+
