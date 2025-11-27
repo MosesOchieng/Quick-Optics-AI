@@ -45,27 +45,44 @@ const FaceDetector = ({
     })
 
     try {
+      console.log('FaceDetector: Loading MediaPipe FaceMesh...')
       await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js')
       
-      if (!window.FaceMesh) return
+      if (!window.FaceMesh) {
+        console.error('FaceDetector: FaceMesh not available after script load')
+        return
+      }
 
+      console.log('FaceDetector: Creating FaceMesh instance...')
       faceMeshRef.current = new window.FaceMesh({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        locateFile: (file) => {
+          const url = `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+          console.log('FaceDetector: Loading file:', url)
+          return url
+        }
       })
 
       faceMeshRef.current.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
-        minDetectionConfidence: 0.5, // Lower threshold for easier detection
-        minTrackingConfidence: 0.3    // Lower threshold for more stable tracking
+        minDetectionConfidence: 0.3, // Even lower threshold for easier detection
+        minTrackingConfidence: 0.2,  // Lower threshold for more stable tracking
+        selfieMode: true             // Mirror the input for front-facing camera
       })
 
       faceMeshRef.current.onResults(handleFaceMeshResults)
       faceMeshReadyRef.current = true
       
+      console.log('FaceDetector: MediaPipe FaceMesh initialized successfully')
       startProcessing()
     } catch (error) {
-      console.warn('FaceMesh failed to load:', error)
+      console.error('FaceDetector: FaceMesh failed to load:', error)
+      // Try to provide helpful error information
+      if (error.message.includes('network')) {
+        console.error('Network error - check internet connection')
+      } else if (error.message.includes('CORS')) {
+        console.error('CORS error - MediaPipe CDN may be blocked')
+      }
     }
   }
 
@@ -111,6 +128,7 @@ const FaceDetector = ({
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
       // No face detected
       if (faceDetected) {
+        console.log('FaceDetector: Face lost')
         setFaceDetected(false)
         setFaceBox(null)
         setEyeBoxes({ left: null, right: null })
@@ -254,6 +272,7 @@ const FaceDetector = ({
 
     // Face detected
     if (!faceDetected) {
+      console.log('FaceDetector: Face detected with confidence:', overallConfidence)
       setFaceDetected(true)
       onFaceDetected?.(metrics)
     } else {

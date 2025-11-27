@@ -9,6 +9,7 @@ import ARCalibrationVisualizer from '../components/ARCalibrationVisualizer'
 import ImageAnnotationTool from '../components/ImageAnnotationTool'
 import TestLayout from '../components/TestLayout'
 import FaceDetector from '../components/FaceDetector'
+import FaceDetectionDebug from '../components/FaceDetectionDebug'
 import DITPLoader from '../components/DITPLoader'
 import cloudConditionScorer from '../services/cloudConditionScorer'
 import adaptiveVoiceCoach from '../services/adaptiveVoiceCoach'
@@ -155,28 +156,9 @@ const EyeScan = () => {
   useEffect(() => {
     startCamera()
     loadHistory()
-    loadFaceMesh()
+    // Remove duplicate MediaPipe initialization - let FaceDetector handle it
     explainableAILog.startScan(`scan_${Date.now()}`)
     fatigueDetector.reset()
-    
-    // Process video frames with FaceMesh continuously
-    let animationFrameId
-    const processVideoFrame = () => {
-      if (videoRef.current && faceMeshRef.current && faceMeshReadyRef.current) {
-        const video = videoRef.current
-        if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
-          faceMeshRef.current.send({ image: video })
-        }
-      }
-      animationFrameId = requestAnimationFrame(processVideoFrame)
-    }
-    
-    // Start processing frames after a short delay to ensure FaceMesh is loaded
-    const startProcessing = setTimeout(() => {
-      if (faceMeshReadyRef.current) {
-        animationFrameId = requestAnimationFrame(processVideoFrame)
-      }
-    }, 2000)
     
     return () => {
       stopCamera()
@@ -186,10 +168,6 @@ const EyeScan = () => {
       if (faceDetectionTimeoutRef.current) {
         clearTimeout(faceDetectionTimeoutRef.current)
       }
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId)
-      }
-      clearTimeout(startProcessing)
     }
   }, [])
 
@@ -396,17 +374,44 @@ const EyeScan = () => {
 
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: 640, height: 480 }
-      })
+      console.log('Starting camera...')
+      const constraints = {
+        video: { 
+          facingMode: 'user', 
+          width: { ideal: 640, min: 320 }, 
+          height: { ideal: 480, min: 240 },
+          frameRate: { ideal: 30, min: 15 }
+        }
+      }
+      
+      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      console.log('Camera stream obtained:', stream.getVideoTracks()[0].getSettings())
+      
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        
+        // Wait for video to be ready
+        videoRef.current.onloadedmetadata = () => {
+          console.log('Video metadata loaded, dimensions:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight)
+        }
+        
+        videoRef.current.oncanplay = () => {
+          console.log('Video can play, starting face detection...')
+        }
       }
+      
       setIsAligned(false)
       setAiMessage('Hello! I\'m Dr. AI. Please position your face inside the frame so I can see both of your eyes clearly.')
     } catch (error) {
       console.error('Error accessing camera:', error)
-      alert('Unable to access camera. Please check permissions.')
+      const errorMsg = error.name === 'NotAllowedError' 
+        ? 'Camera access denied. Please allow camera permissions and refresh the page.'
+        : error.name === 'NotFoundError'
+        ? 'No camera found. Please ensure your device has a camera.'
+        : `Camera error: ${error.message}`
+      
+      setAiMessage(errorMsg)
+      alert(errorMsg)
     }
   }
 
@@ -1082,150 +1087,9 @@ const EyeScan = () => {
     setQualityScore(Math.max(0, Math.min(100, Math.round(composite * 100))))
   }
 
-  const loadFaceMesh = async () => {
-    if (faceMeshReadyRef.current || typeof window === 'undefined') return
-    const loadScript = (src) => new Promise((resolve, reject) => {
-      const script = document.createElement('script')
-      script.src = src
-      script.async = true
-      script.onload = resolve
-      script.onerror = reject
-      document.body.appendChild(script)
-    })
-    try {
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js')
-      if (!window.FaceMesh) return
-      faceMeshRef.current = new window.FaceMesh({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-      })
-      faceMeshRef.current.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
-      })
-      faceMeshRef.current.onResults(handleFaceMeshResults)
-      faceMeshReadyRef.current = true
-      console.log('FaceMesh loaded and ready')
-      
-      // Start processing frames immediately when ready
-      if (videoRef.current) {
-        const processFrame = () => {
-          if (videoRef.current && faceMeshRef.current && faceMeshReadyRef.current) {
-            const video = videoRef.current
-            if (video.readyState === video.HAVE_ENOUGH_DATA && video.videoWidth > 0) {
-              faceMeshRef.current.send({ image: video })
-            }
-          }
-          requestAnimationFrame(processFrame)
-        }
-        requestAnimationFrame(processFrame)
-      }
-    } catch (error) {
-      console.warn('FaceMesh failed to load', error)
-    }
-  }
+  // Removed duplicate MediaPipe initialization - FaceDetector component handles this
 
-  const handleFaceMeshResults = (results) => {
-    if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
-      // No face detected - clear face detection
-      if (faceDetected) {
-        setFaceDetected(false)
-        if (isScanning) {
-          // Pause scan if face is lost during scanning
-          setIsScanning(false)
-          setScanProgress(0)
-          scanProgressRef.current = 0
-          const msg = 'Face not detected. Please reposition your face in the frame.'
-          setAiMessage(msg)
-          speakGuidance(msg, true)
-        } else if (isAligned) {
-          setIsAligned(false)
-          const msg = 'Please position your face in front of the camera.'
-          setAiMessage(msg)
-          speakGuidance(msg, true)
-        }
-      }
-      setCurrentLandmarks(null)
-      return
-    }
-    
-    // Face detected - validate we have both eyes
-    const landmarks = results.multiFaceLandmarks[0]
-    setCurrentLandmarks(landmarks)
-    
-    if (!landmarks[468] || !landmarks[473]) {
-      // Missing eye landmarks
-      if (faceDetected) {
-        setFaceDetected(false)
-        const msg = 'Both eyes need to be visible. Please adjust your position.'
-        setAiMessage(msg)
-        speakGuidance(msg, true)
-      }
-      return
-    }
-    
-    const leftIris = landmarks[468]
-    const rightIris = landmarks[473]
-    const gazeX = (leftIris.x + rightIris.x) / 2
-    const gazeY = (leftIris.y + rightIris.y) / 2
-    setGazePoint({ x: gazeX, y: gazeY })
-
-    // Calculate iris size for fatigue detection (simplified)
-    const leftEyeUpper = landmarks[159]
-    const leftEyeLower = landmarks[145]
-    const rightEyeUpper = landmarks[386]
-    const rightEyeLower = landmarks[374]
-    const leftIrisSize = Math.abs(leftEyeUpper.y - leftEyeLower.y)
-    const rightIrisSize = Math.abs(rightEyeUpper.y - rightEyeLower.y)
-    const avgIrisSize = (leftIrisSize + rightIrisSize) / 2
-    fatigueDetector.recordIrisSize(avgIrisSize)
-
-    // Face is detected with both eyes visible
-    const wasNotDetected = !faceDetected
-    setFaceDetected(true)
-    
-    if (faceDetectionTimeoutRef.current) {
-      clearTimeout(faceDetectionTimeoutRef.current)
-    }
-    faceDetectionTimeoutRef.current = setTimeout(() => {
-      setFaceDetected(false)
-      if (isScanning) {
-        setIsScanning(false)
-        const msg = 'Face detection lost. Please reposition.'
-        setAiMessage(msg)
-        speakGuidance(msg, true)
-      }
-    }, 2000) // Increased timeout to 2 seconds
-    
-    // Welcome message when face first detected
-    if (wasNotDetected && !isScanning) {
-      const msg = 'Face detected. Please hold still and look straight ahead.'
-      setAiMessage(msg)
-      speakGuidance(msg, true)
-    }
-    if (!faceMetrics) {
-      setFaceMetrics(generateFaceMetrics())
-    }
-
-    const upper = landmarks[159]
-    const lower = landmarks[145]
-    const openness = Math.abs(upper.y - lower.y)
-    const blinkThreshold = 0.005
-    const now = Date.now()
-    if (openness < blinkThreshold) {
-      const lastBlink = blinkHistoryRef.current[blinkHistoryRef.current.length - 1]
-      if (!lastBlink || now - lastBlink > 250) {
-        const updated = [...blinkHistoryRef.current.filter((t) => now - t < 60000), now]
-        blinkHistoryRef.current = updated
-        setBlinkStats({
-          count: updated.length,
-          rate: Math.round(updated.length)
-        })
-        fatigueDetector.recordBlink(now)
-      }
-    }
-  }
+  // Removed duplicate face detection logic - FaceDetector component handles this
 
   const loadHistory = () => {
     try {
@@ -1501,6 +1365,48 @@ const EyeScan = () => {
               }}
               onFaceMetrics={(metrics) => {
                 setFaceMetrics(metrics)
+                
+                // Update gaze point from landmarks
+                if (metrics.landmarks) {
+                  const landmarks = metrics.landmarks
+                  if (landmarks[468] && landmarks[473]) {
+                    const leftIris = landmarks[468]
+                    const rightIris = landmarks[473]
+                    const gazeX = (leftIris.x + rightIris.x) / 2
+                    const gazeY = (leftIris.y + rightIris.y) / 2
+                    setGazePoint({ x: gazeX, y: gazeY })
+                    
+                    // Calculate iris size for fatigue detection
+                    const leftEyeUpper = landmarks[159]
+                    const leftEyeLower = landmarks[145]
+                    const rightEyeUpper = landmarks[386]
+                    const rightEyeLower = landmarks[374]
+                    if (leftEyeUpper && leftEyeLower && rightEyeUpper && rightEyeLower) {
+                      const leftIrisSize = Math.abs(leftEyeUpper.y - leftEyeLower.y)
+                      const rightIrisSize = Math.abs(rightEyeUpper.y - rightEyeLower.y)
+                      const avgIrisSize = (leftIrisSize + rightIrisSize) / 2
+                      fatigueDetector.recordIrisSize(avgIrisSize)
+                      
+                      // Blink detection
+                      const openness = Math.abs(leftEyeUpper.y - leftEyeLower.y)
+                      const blinkThreshold = 0.005
+                      const now = Date.now()
+                      if (openness < blinkThreshold) {
+                        const lastBlink = blinkHistoryRef.current[blinkHistoryRef.current.length - 1]
+                        if (!lastBlink || now - lastBlink > 250) {
+                          const updated = [...blinkHistoryRef.current.filter((t) => now - t < 60000), now]
+                          blinkHistoryRef.current = updated
+                          setBlinkStats({
+                            count: updated.length,
+                            rate: Math.round(updated.length)
+                          })
+                          fatigueDetector.recordBlink(now)
+                        }
+                      }
+                    }
+                  }
+                }
+                
                 // Update eye-specific metrics based on face detection
                 if (metrics.leftEye && metrics.rightEye) {
                   setEyeSpecificMetrics(prev => ({
@@ -1515,6 +1421,19 @@ const EyeScan = () => {
                       alignment: metrics.faceCenter ? 0.9 : 0.5
                     }
                   }))
+                }
+                
+                // Update alignment status
+                if (metrics.alignment && metrics.alignment.isWellAligned && !isAligned) {
+                  setIsAligned(true)
+                  const msg = 'Perfect alignment! Dr. AI can see your eyes clearly now.'
+                  setAiMessage(msg)
+                  speakGuidance(msg, true)
+                } else if (metrics.alignment && !metrics.alignment.isWellAligned && isAligned) {
+                  setIsAligned(false)
+                  if (metrics.alignment.guidance) {
+                    setAiMessage(`Please adjust: ${metrics.alignment.guidance}`)
+                  }
                 }
               }}
               showOverlay={true}
@@ -2119,6 +2038,13 @@ const EyeScan = () => {
         onComplete={handleDITPComplete}
         eyeData={{ left: leftEyeData, right: rightEyeData }}
         estimatedDuration={8000}
+      />
+
+      {/* Face Detection Debug (Development Only) */}
+      <FaceDetectionDebug 
+        faceDetected={faceDetected}
+        faceMetrics={faceMetrics}
+        confidence={confidence}
       />
       </div>
     </TestLayout>
