@@ -1351,9 +1351,29 @@
   margin: 0 1rem;
   width: 70px;
   height: 45px;
-  border: 2px solid var(--primary-teal);
+  border: 2px solid #00ffff;
   border-radius: 50%;
   animation: pulse-eye 2s ease-in-out infinite;
+  background: rgba(0, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.eye-marker.detected {
+  border: 3px solid #00ff00;
+  background: rgba(0, 255, 0, 0.2);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+  animation: pulse-eye-detected 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-eye-detected {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
+  }
 }
 
 .gaze-overlay {

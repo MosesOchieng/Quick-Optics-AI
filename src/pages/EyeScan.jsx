@@ -67,7 +67,7 @@ const EyeScan = () => {
     left: { pupilSize: 0, brightness: 0, sharpness: 0, alignment: 0 },
     right: { pupilSize: 0, brightness: 0, sharpness: 0, alignment: 0 }
   })
-  const [scanQualityThreshold, setScanQualityThreshold] = useState(0.8)
+  const [scanQualityThreshold, setScanQualityThreshold] = useState(0.3) // Much lower for instant progression
   const [canProceedToNext, setCanProceedToNext] = useState(false)
   const [showAnnotationTool, setShowAnnotationTool] = useState(false)
   const [showDITPLoader, setShowDITPLoader] = useState(false)
@@ -393,10 +393,17 @@ const EyeScan = () => {
         // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
           console.log('Video metadata loaded, dimensions:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight)
+          // Face detection will start automatically via FaceDetector component
         }
         
         videoRef.current.oncanplay = () => {
-          console.log('Video can play, starting face detection...')
+          console.log('Video can play, face detection ready...')
+          // Detection starts immediately - no waiting
+        }
+        
+        // Start detection as soon as video has any data
+        videoRef.current.onloadeddata = () => {
+          console.log('Video data loaded, ready for detection')
         }
       }
       
@@ -411,7 +418,8 @@ const EyeScan = () => {
         : `Camera error: ${error.message}`
       
       setAiMessage(errorMsg)
-      alert(errorMsg)
+      // Don't use alert() - just show message in UI
+      console.error('Camera error:', errorMsg)
     }
   }
 
@@ -537,30 +545,29 @@ const EyeScan = () => {
     }, 3000)
   }
 
-  // Check if current eye scan meets quality threshold - more lenient for seamless experience
+  // Check if current eye scan meets quality threshold - very lenient for instant progression
   const checkScanQuality = (eyeMetrics) => {
     if (!eyeMetrics) return false
     
+    // Very lenient quality factors - accept almost any detection
     const qualityFactors = {
-      brightness: eyeMetrics.brightness > 0.2 && eyeMetrics.brightness < 0.9, // More lenient
-      sharpness: eyeMetrics.sharpness > 0.4, // More lenient
-      pupilDetection: eyeMetrics.pupilSize > 0.05, // More lenient
-      overallQuality: eyeMetrics.qualityScore > (scanQualityThreshold * 0.7) // More lenient
+      brightness: eyeMetrics.brightness > 0.1 && eyeMetrics.brightness < 0.95, // Very lenient
+      sharpness: eyeMetrics.sharpness > 0.2, // Very lenient
+      pupilDetection: eyeMetrics.pupilSize > 0.02, // Very lenient
+      overallQuality: eyeMetrics.qualityScore > (scanQualityThreshold * 0.5) // Very lenient
     }
 
     const passedFactors = Object.values(qualityFactors).filter(Boolean).length
-    const qualityMet = passedFactors >= 2 // Reduced requirement
+    const qualityMet = passedFactors >= 1 // Accept with just 1 factor - instant progression
 
     if (qualityMet && !canProceedToNext) {
       setCanProceedToNext(true)
       const msg = `${currentEye === 'left' ? 'Left' : 'Right'} eye analysis complete! Moving to next step...`
       setAiMessage(msg)
-      speakGuidance(msg, true)
+      // Don't speak - just proceed immediately
       
-      // Auto-proceed after a short delay for seamless experience
-      setTimeout(() => {
-        proceedToNextPhase()
-      }, 2000)
+      // Auto-proceed immediately - no delay
+      proceedToNextPhase()
     }
 
     return qualityMet
@@ -1127,10 +1134,13 @@ const EyeScan = () => {
   const speakGuidance = async (message, force = false) => {
     if (!voiceGuidanceEnabled && !force) return
     
-    // Reduce cooldown for critical messages
-    const cooldown = force ? 1500 : 4000
+    // Increased cooldown to prevent spam - only speak important messages
+    const cooldown = force ? 3000 : 8000 // Much longer cooldown
     const now = Date.now()
-    if (now - lastVoicePromptRef.current < cooldown && !force) return
+    if (now - lastVoicePromptRef.current < cooldown && !force) {
+      console.log('Voice guidance skipped (cooldown):', message)
+      return
+    }
     
     lastVoicePromptRef.current = now
     
@@ -1177,24 +1187,14 @@ const EyeScan = () => {
   }
 
   useEffect(() => {
-    // Auto-start scan when face is detected and aligned - more seamless
+    // Auto-start scan immediately when face is detected and aligned - instant detection
     if (isAligned && !isScanning && faceDetected && scanPhase === 'preparation') {
-      const msg = 'Perfect! Starting your eye scan in 3 seconds...'
+      const msg = 'Perfect! Starting your eye scan now...'
       setAiMessage(msg)
-      speakGuidance(msg, true)
-      
-      const timer = setTimeout(() => {
-        // Double-check face is still detected before starting
-        if (faceDetected) {
-          startScan()
-        } else {
-          const msg = 'Face detection lost. Please reposition your face.'
-          setAiMessage(msg)
-          speakGuidance(msg, true)
-          setIsAligned(false)
-        }
-      }, 3000) // Reduced time for faster flow
-      return () => clearTimeout(timer)
+      // Start immediately - no delay
+      if (faceDetected) {
+        startScan()
+      }
     }
   }, [isAligned, faceDetected, scanPhase])
 
@@ -1345,10 +1345,12 @@ const EyeScan = () => {
             <FaceDetector
               videoRef={videoRef}
               onFaceDetected={(metrics) => {
+                console.log('EyeScan: Face detected with metrics:', metrics)
                 setFaceDetected(true)
                 setFaceMetrics(metrics)
-                const msg = 'Face detected! Hold still and look straight ahead.'
+                const msg = 'Great! I can see your face. Please hold still and look straight ahead.'
                 setAiMessage(msg)
+                // Only speak once when first detected
                 speakGuidance(msg, true)
               }}
               onFaceLost={() => {
@@ -1364,7 +1366,10 @@ const EyeScan = () => {
                 speakGuidance(msg, true)
               }}
               onFaceMetrics={(metrics) => {
-                setFaceMetrics(metrics)
+                // Update face metrics continuously for adaptive sizing
+                if (metrics) {
+                  setFaceMetrics(metrics)
+                }
                 
                 // Update gaze point from landmarks
                 if (metrics.landmarks) {
@@ -1423,17 +1428,19 @@ const EyeScan = () => {
                   }))
                 }
                 
-                // Update alignment status
-                if (metrics.alignment && metrics.alignment.isWellAligned && !isAligned) {
+                // Update alignment status - very lenient for instant detection
+                // Consider aligned if face is detected and roughly centered
+                const isRoughlyAligned = metrics.alignment && (
+                  metrics.alignment.isWellAligned || 
+                  (Math.abs(metrics.alignment.horizontalOffset) < 0.3 && 
+                   Math.abs(metrics.alignment.verticalOffset) < 0.3)
+                )
+                
+                if (isRoughlyAligned && !isAligned) {
                   setIsAligned(true)
-                  const msg = 'Perfect alignment! Dr. AI can see your eyes clearly now.'
-                  setAiMessage(msg)
-                  speakGuidance(msg, true)
-                } else if (metrics.alignment && !metrics.alignment.isWellAligned && isAligned) {
+                  // Don't speak - just proceed silently
+                } else if (!isRoughlyAligned && isAligned) {
                   setIsAligned(false)
-                  if (metrics.alignment.guidance) {
-                    setAiMessage(`Please adjust: ${metrics.alignment.guidance}`)
-                  }
                 }
               }}
               showOverlay={true}
@@ -1443,30 +1450,55 @@ const EyeScan = () => {
             {/* Canvas reserved for computer-vision processing (eye detection, brightness, etc.) */}
             <canvas ref={canvasRef} className="scan-overlay" />
 
-          {/* Face alignment frame */}
-          <div
-            className={`alignment-rectangle ${isAligned ? 'aligned' : ''}`}
-            style={{
-              width: faceMetrics ? `${faceMetrics.frameWidth}%` : '70%',
-              height: faceMetrics ? `${faceMetrics.frameHeight}%` : '60%'
-            }}
-          >
-            <div className="corner corner-tl"></div>
-            <div className="corner corner-tr"></div>
-            <div className="corner corner-bl"></div>
-            <div className="corner corner-br"></div>
-          </div>
+          {/* Face alignment frame - adapts to actual face size */}
+          {faceMetrics && faceMetrics.faceWidth && (
+            <div
+              className={`alignment-rectangle ${isAligned && faceDetected ? 'aligned' : ''}`}
+              style={{
+                width: `${Math.min(90, Math.max(50, faceMetrics.faceWidth * 100))}%`,
+                height: `${Math.min(80, Math.max(40, faceMetrics.faceHeight * 100))}%`,
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <div className="corner corner-tl"></div>
+              <div className="corner corner-tr"></div>
+              <div className="corner corner-bl"></div>
+              <div className="corner corner-br"></div>
+            </div>
+          )}
 
-          {/* Eye alignment circles */}
-          <div
-            className="eye-overlay"
-            style={{
-              gap: faceMetrics ? `${faceMetrics.pupilDistance}px` : '80px'
-            }}
-          >
-            <div className="eye-marker left-eye" />
-            <div className="eye-marker right-eye" />
-          </div>
+          {/* Eye alignment circles - positioned based on actual eye detection */}
+          {faceMetrics && faceMetrics.leftEye && faceMetrics.rightEye && (
+            <div className="eye-overlay">
+              <div 
+                className={`eye-marker left-eye ${faceDetected && faceMetrics.leftEye.center ? 'detected' : ''}`}
+                style={{
+                  position: 'absolute',
+                  left: `${faceMetrics.leftEye.center.x * 100}%`,
+                  top: `${faceMetrics.leftEye.center.y * 100}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: faceMetrics.leftEye.box ? `${faceMetrics.leftEye.box.width * 100}%` : '60px',
+                  height: faceMetrics.leftEye.box ? `${faceMetrics.leftEye.box.height * 100}%` : '60px',
+                  transition: 'all 0.3s ease'
+                }}
+              />
+              <div 
+                className={`eye-marker right-eye ${faceDetected && faceMetrics.rightEye.center ? 'detected' : ''}`}
+                style={{
+                  position: 'absolute',
+                  left: `${faceMetrics.rightEye.center.x * 100}%`,
+                  top: `${faceMetrics.rightEye.center.y * 100}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: faceMetrics.rightEye.box ? `${faceMetrics.rightEye.box.width * 100}%` : '60px',
+                  height: faceMetrics.rightEye.box ? `${faceMetrics.rightEye.box.height * 100}%` : '60px',
+                  transition: 'all 0.3s ease'
+                }}
+              />
+            </div>
+          )}
 
           {/* Measurement overlay */}
           {faceMetrics && (
