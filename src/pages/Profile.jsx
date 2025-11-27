@@ -253,6 +253,20 @@ const Profile = () => {
             <div className="privacy-actions">
               <button className="btn btn-secondary btn-small">Privacy Policy</button>
               <button className="btn btn-secondary btn-small">Export Data</button>
+              <button 
+                className="btn btn-secondary btn-small"
+                onClick={() => {
+                  // Clear all user data
+                  localStorage.removeItem('user')
+                  localStorage.removeItem('user_data')
+                  localStorage.removeItem('token')
+                  // Redirect to home
+                  navigate('/')
+                  window.location.reload()
+                }}
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>

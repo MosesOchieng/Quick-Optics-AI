@@ -8,6 +8,9 @@ import AstigmatismTest from '../components/tests/AstigmatismTest'
 import ColorBlindnessTest from '../components/tests/ColorBlindnessTest'
 import ContrastTest from '../components/tests/ContrastTest'
 import DryEyeTest from '../components/tests/DryEyeTest'
+import FocusFinder from '../components/games/FocusFinder'
+import PeripheralVision from '../components/games/PeripheralVision'
+import ColorDetector from '../components/games/ColorDetector'
 import VoiceBot from '../components/VoiceBot'
 import TestLayout from '../components/TestLayout'
 import './VisionTests.css'
@@ -116,8 +119,16 @@ const VisionTests = () => {
       }).flat()
     }
     
-    // Default tests if no consultation done
+    // Default tests if no consultation done - includes trainer games
     return [
+      {
+        id: 'focus-finder',
+        name: 'Focus Finder Challenge',
+        description: 'Track and tap moving objects to test your focus and reaction time',
+        component: FocusFinder,
+        gameMode: true,
+        trainerGame: true
+      },
       {
         id: 'myopia',
         name: 'Vision Clarity Game - Distance',
@@ -138,6 +149,22 @@ const VisionTests = () => {
         description: 'Interactive test for astigmatism',
         component: AstigmatismTest,
         gameMode: true
+      },
+      {
+        id: 'peripheral',
+        name: 'Peripheral Vision Ninja',
+        description: 'Tap objects appearing from the sides to test your peripheral awareness',
+        component: PeripheralVision,
+        gameMode: true,
+        trainerGame: true
+      },
+      {
+        id: 'color-detector',
+        name: 'Color & Light Detector',
+        description: 'Identify colors, contrasts, and brightness to test your color perception',
+        component: ColorDetector,
+        gameMode: true,
+        trainerGame: true
       },
       {
         id: 'color',

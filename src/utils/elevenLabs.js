@@ -15,43 +15,99 @@ const elevenlabs = new ElevenLabsClient({
 })
 
 /**
+ * Detect if text is in Swahili
+ * @param {string} text - Text to analyze
+ * @returns {boolean} - True if text appears to be Swahili
+ */
+const detectSwahili = (text) => {
+  const swahiliWords = [
+    'jambo', 'habari', 'asante', 'karibu', 'pole', 'sawa', 'hapana', 'ndiyo',
+    'mimi', 'wewe', 'yeye', 'sisi', 'nyinyi', 'wao', 'hapa', 'huko', 'hapo',
+    'leo', 'kesho', 'jana', 'sasa', 'zamani', 'baadaye', 'kabla', 'baada',
+    'na', 'au', 'lakini', 'kwa', 'katika', 'kutoka', 'hadi', 'mpaka',
+    'macho', 'jicho', 'machozi', 'kuona', 'angalia', 'tazama', 'ona',
+    'afya', 'mgonjwa', 'daktari', 'hospitali', 'dawa', 'tiba', 'chakula',
+    'maji', 'moto', 'baridi', 'nzuri', 'baya', 'kubwa', 'ndogo', 'refu', 'fupi'
+  ]
+  
+  const lowerText = text.toLowerCase()
+  const swahiliCount = swahiliWords.filter(word => lowerText.includes(word)).length
+  const totalWords = text.split(/\s+/).length
+  
+  // If more than 20% of words are Swahili, consider it Swahili
+  return swahiliCount > 0 && (swahiliCount / Math.max(totalWords, 1)) > 0.2
+}
+
+/**
  * Convert text to speech and play it
  * @param {string} text - Text to convert to speech
  * @param {string} voiceId - Optional voice ID (defaults to VOICE_ID)
+ * @param {string} language - Optional language ('en' or 'sw')
  * @returns {Promise<void>}
  */
-export const speakWithElevenLabs = async (text, voiceId = VOICE_ID) => {
+export const speakWithElevenLabs = async (text, voiceId = VOICE_ID, language = null) => {
   try {
+    // Auto-detect language if not specified
+    if (!language) {
+      language = detectSwahili(text) ? 'sw' : 'en'
+    }
+    
+    // Use appropriate voice ID based on language
+    const selectedVoiceId = language === 'sw' ? SWAHILI_VOICE_ID : voiceId
+    
     const audio = await elevenlabs.textToSpeech.convert(
-      voiceId,
+      selectedVoiceId,
       {
         text: text,
-        modelId: 'eleven_multilingual_v2',
-        outputFormat: 'mp3_44100_128'
+        modelId: 'eleven_multilingual_v2', // Multilingual model supports Swahili
+        outputFormat: 'mp3_44100_128',
+        voiceSettings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          style: 0.0,
+          use_speaker_boost: true
+        }
       }
     )
     
     await play(audio)
   } catch (error) {
     console.error('ElevenLabs TTS Error:', error)
-    // Fallback to browser TTS
-    fallbackTTS(text)
+    // Fallback to browser TTS with language detection
+    fallbackTTS(text, language)
   }
 }
 
 /**
- * Fallback to browser's built-in TTS with female voice preference
+ * Fallback to browser's built-in TTS with Kenyan/Swahili voice preference
  */
-const fallbackTTS = (text) => {
+const fallbackTTS = (text, language = null) => {
   if ('speechSynthesis' in window) {
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.rate = 0.9
-    utterance.pitch = 1.2 // Higher pitch for female voice
+    utterance.pitch = 1.1 // Natural pitch
     utterance.volume = 1.0
     
-    // Try to select a female voice
+    // Auto-detect language if not specified
+    if (!language) {
+      language = detectSwahili(text) ? 'sw' : 'en'
+    }
+    
+    // Set language
+    utterance.lang = language === 'sw' ? 'sw-KE' : 'en-KE' // Kenyan English or Swahili
+    
+    // Try to select a Kenyan/African voice or Swahili voice
     const voices = window.speechSynthesis.getVoices()
-    const femaleVoice = voices.find(voice => 
+    
+    // Priority: Swahili voices, then Kenyan English, then African voices, then any female voice
+    let selectedVoice = voices.find(voice => 
+      voice.lang.includes('sw') || voice.name.toLowerCase().includes('swahili')
+    ) || voices.find(voice => 
+      voice.lang.includes('KE') || voice.lang.includes('kenya')
+    ) || voices.find(voice => 
+      voice.name.toLowerCase().includes('african') || 
+      voice.name.toLowerCase().includes('kenya')
+    ) || voices.find(voice => 
       voice.name.toLowerCase().includes('female') ||
       voice.name.toLowerCase().includes('samantha') ||
       voice.name.toLowerCase().includes('karen') ||
@@ -60,8 +116,8 @@ const fallbackTTS = (text) => {
       voice.name.toLowerCase().includes('zira')
     )
     
-    if (femaleVoice) {
-      utterance.voice = femaleVoice
+    if (selectedVoice) {
+      utterance.voice = selectedVoice
     }
     
     window.speechSynthesis.speak(utterance)

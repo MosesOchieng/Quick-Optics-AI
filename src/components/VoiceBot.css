@@ -98,6 +98,36 @@
   justify-content: space-between;
 }
 
+.voice-bot-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.language-toggle {
+  background: var(--primary-teal);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.language-toggle:hover {
+  background: var(--primary-teal-dark);
+  transform: scale(1.05);
+}
+
+.language-toggle:active {
+  transform: scale(0.95);
+}
+
 .voice-bot-info {
   display: flex;
   align-items: center;

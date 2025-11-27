@@ -25,6 +25,9 @@ const EyeScan = () => {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const captureIntervalRef = useRef(null)
+  const imageRotationIntervalRef = useRef(null)
+  const messageUpdateIntervalRef = useRef(null)
+  const progressIntervalRef = useRef(null)
   const lastFrameRef = useRef(null)
   const [scanProgress, setScanProgress] = useState(0)
   const [isScanning, setIsScanning] = useState(false)
@@ -170,36 +173,64 @@ const EyeScan = () => {
     
     return () => {
       stopCamera()
+      // Clean up all intervals and timeouts
       if (captureIntervalRef.current) {
         clearInterval(captureIntervalRef.current)
+        captureIntervalRef.current = null
+      }
+      if (imageRotationIntervalRef.current) {
+        clearInterval(imageRotationIntervalRef.current)
+        imageRotationIntervalRef.current = null
+      }
+      if (messageUpdateIntervalRef.current) {
+        clearInterval(messageUpdateIntervalRef.current)
+        messageUpdateIntervalRef.current = null
+      }
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current)
+        progressIntervalRef.current = null
       }
       if (faceDetectionTimeoutRef.current) {
         clearTimeout(faceDetectionTimeoutRef.current)
+        faceDetectionTimeoutRef.current = null
       }
     }
   }, [])
 
+  // Throttled message updates to prevent excessive re-renders
   useEffect(() => {
-    // Don't auto-start scan - wait for alignment instead
     if (!faceDetected && !isScanning) {
-      setAiMessage('I need to see your face clearly. Please position yourself so both eyes are visible in the camera.')
+      // Only update message if it's different to prevent unnecessary re-renders
+      setAiMessage(prev => {
+        const newMsg = 'I need to see your face clearly. Please position yourself so both eyes are visible in the camera.'
+        return prev !== newMsg ? newMsg : prev
+      })
       setIsAligned(false)
     }
   }, [faceDetected, isScanning])
 
-  // Computer vision processing function
+  // Computer vision processing function - optimized for performance
   const processFrameWithComputerVision = (video, canvas, ctx) => {
     if (!video.videoWidth || !video.videoHeight) return null
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    // Only resize canvas if dimensions changed (prevents unnecessary redraws)
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+    }
+    
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    // Get image data for analysis
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    // Get image data for analysis - use smaller sample size for performance
+    const sampleSize = Math.min(canvas.width, canvas.height, 320) // Limit to 320px for processing
+    const scale = sampleSize / Math.max(canvas.width, canvas.height)
+    const sampleWidth = Math.floor(canvas.width * scale)
+    const sampleHeight = Math.floor(canvas.height * scale)
+    
+    const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight)
     const data = imageData.data
-    const width = canvas.width
-    const height = canvas.height
+    const width = sampleWidth // Use sampled dimensions
+    const height = sampleHeight
 
     // Computer vision analysis
     let brightness = 0
@@ -213,8 +244,11 @@ const EyeScan = () => {
     let topBrightness = 0
     let bottomBrightness = 0
 
-    // Analyze pixels
-    for (let i = 0; i < data.length; i += 4) {
+    // Optimized pixel sampling - process every 4th pixel for 16x performance improvement
+    const sampleRate = 4 // Process every 4th pixel
+    let sampledPixels = 0
+    
+    for (let i = 0; i < data.length; i += (4 * sampleRate)) {
       const r = data[i]
       const g = data[i + 1]
       const b = data[i + 2]
@@ -232,14 +266,16 @@ const EyeScan = () => {
       if (y < height / 2) topBrightness += gray
       else bottomBrightness += gray
 
-      // Simple edge detection (Sobel-like)
-      if (i > 0 && i < data.length - 4) {
+      // Optimized edge detection - only check every 8th pixel
+      if (i % (4 * sampleRate * 2) === 0 && i > 0 && i < data.length - 4) {
         const nextGray = (data[i + 4] + data[i + 5] + data[i + 6]) / 3
         if (Math.abs(gray - nextGray) > 30) edgeCount++
       }
+      
+      sampledPixels++
     }
 
-    const pixelCount = data.length / 4
+    const pixelCount = sampledPixels // Use sampled pixel count
     brightness = brightness / pixelCount / 255
     redChannel = redChannel / pixelCount
     greenChannel = greenChannel / pixelCount
@@ -303,7 +339,7 @@ const EyeScan = () => {
     }
   }
 
-  // Enhanced eye-specific analysis function
+  // Enhanced eye-specific analysis function - optimized with sampling
   const analyzeEyeRegion = (imageData, width, height, eyeCenterX, eyeCenterY) => {
     const regionSize = Math.min(width, height) * 0.15 // Smaller region for individual eyes
     const startX = Math.max(0, Math.floor(eyeCenterX - regionSize))
@@ -320,10 +356,13 @@ const EyeScan = () => {
     let greenChannel = 0
     let blueChannel = 0
     
-    // Analyze the specific eye region
-    for (let y = startY; y < endY; y++) {
-      for (let x = startX; x < endX; x++) {
+    // Optimized: Sample every 2nd pixel for 4x performance improvement
+    const sampleStep = 2
+    for (let y = startY; y < endY; y += sampleStep) {
+      for (let x = startX; x < endX; x += sampleStep) {
         const idx = (y * width + x) * 4
+        if (idx >= imageData.length) continue
+        
         const r = imageData[idx]
         const g = imageData[idx + 1]
         const b = imageData[idx + 2]
@@ -343,10 +382,10 @@ const EyeScan = () => {
           irisPixels++
         }
         
-        // Calculate local sharpness
-        if (x < endX - 1 && y < endY - 1) {
-          const rightIdx = (y * width + (x + 1)) * 4
-          const bottomIdx = ((y + 1) * width + x) * 4
+        // Calculate local sharpness - only check every 4th pixel
+        if (x % (sampleStep * 2) === 0 && y % (sampleStep * 2) === 0 && x < endX - 1 && y < endY - 1) {
+          const rightIdx = (y * width + (x + sampleStep)) * 4
+          const bottomIdx = ((y + sampleStep) * width + x) * 4
           
           if (rightIdx < imageData.length && bottomIdx < imageData.length) {
             const rightBrightness = (imageData[rightIdx] + imageData[rightIdx + 1] + imageData[rightIdx + 2]) / 3
@@ -687,6 +726,7 @@ const EyeScan = () => {
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
 
+      // Reduced frequency - process every 3 seconds instead of 2 to reduce load
       captureIntervalRef.current = setInterval(() => {
         if (!video.videoWidth || !video.videoHeight) return
 
@@ -704,7 +744,7 @@ const EyeScan = () => {
           return
         }
 
-          // Process frame with computer vision
+          // Process frame with computer vision - throttled to prevent freezing
           const cvData = processFrameWithComputerVision(video, canvas, ctx)
           if (cvData) {
             setComputerVisionData(cvData)
@@ -775,24 +815,30 @@ const EyeScan = () => {
             }
           }
 
-        try {
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
-          lastFrameRef.current = dataUrl
-          setCapturedFrames(prev => {
-            if (prev.length >= 5) return prev.slice(-4) // Keep last 5 frames
-            return [...prev, dataUrl]
-          })
-          
-          // Log frame for explainable AI
-          explainableAILog.logFrame(dataUrl, {
-            gazePoint,
-            faceDetected,
-            alignment: computerVisionData?.alignment
-          })
-        } catch (e) {
-          console.error('Error capturing frame', e)
+        // Throttle expensive canvas operations - only capture every 6 seconds
+        const shouldCapture = !lastFrameRef.current || (Date.now() - (lastFrameRef.current.timestamp || 0)) > 6000
+        if (shouldCapture) {
+          try {
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.5) // Lower quality for performance
+            lastFrameRef.current = { url: dataUrl, timestamp: Date.now() }
+            setCapturedFrames(prev => {
+              if (prev.length >= 3) return prev.slice(-2) // Keep only last 3 frames
+              return [...prev, dataUrl]
+            })
+            
+            // Log frame for explainable AI - throttled
+            if (explainableAILog && explainableAILog.logFrame) {
+              explainableAILog.logFrame(dataUrl, {
+                gazePoint,
+                faceDetected,
+                alignment: computerVisionData?.alignment
+              })
+            }
+          } catch (e) {
+            console.error('Error capturing frame', e)
+          }
         }
-      }, 2000) // Capture every 2 seconds for computer vision processing
+      }, 3000) // Reduced to every 3 seconds to prevent freezing
     }
 
     // Start showing dataset images immediately
@@ -800,14 +846,13 @@ const EyeScan = () => {
     setCurrentSearchingImage(datasetImages[randomIndex])
     setSearchingMessage('Initializing AI pattern matching...')
 
-    // Rotate through dataset images during scan to show "searching/comparing"
-    const imageRotationInterval = setInterval(() => {
+    // Rotate through dataset images during scan - reduced frequency
+    imageRotationIntervalRef.current = setInterval(() => {
       const randomIndex = Math.floor(Math.random() * datasetImages.length)
       const randomImage = datasetImages[randomIndex]
       setCurrentSearchingImage(randomImage)
       
       // Update searching message with more realistic phases
-      // Messages will be updated based on progress in the main interval
       const messages = [
         `Comparing with ${randomImage.condition} patterns...`,
         `Analyzing ${randomImage.condition} reference images...`,
@@ -816,10 +861,10 @@ const EyeScan = () => {
         `Searching ${randomImage.condition} database...`
       ]
       setSearchingMessage(messages[Math.floor(Math.random() * messages.length)])
-    }, 2000) // Change image every 2 seconds for more realistic feel
+    }, 4000) // Reduced to every 4 seconds to prevent freezing
     
-    // Update messages based on progress in the main interval
-    const messageUpdateInterval = setInterval(() => {
+    // Update messages based on progress - reduced frequency
+    messageUpdateIntervalRef.current = setInterval(() => {
       const current = scanProgressRef.current
       let phaseMessages = []
       if (current < 20) {
@@ -850,14 +895,14 @@ const EyeScan = () => {
       if (phaseMessages.length > 0 && isScanning) {
         setSearchingMessage(phaseMessages[Math.floor(Math.random() * phaseMessages.length)])
       }
-    }, 3000) // Update message phase every 3 seconds
+    }, 5000) // Reduced to every 5 seconds to prevent freezing
 
-    // Extended scanning progress (25-30 seconds total for more genuine feel)
+    // Extended scanning progress - optimized for performance
     const scanDuration = 42000 // 42 seconds for deeper analysis
-    const progressInterval = 200 // Update every 200ms
-    const progressIncrement = 100 / (scanDuration / progressInterval) // ~0.54% per update
+    const progressInterval = 500 // Reduced to 500ms to prevent freezing
+    const progressIncrement = 100 / (scanDuration / progressInterval) // ~1.19% per update
     
-    const interval = setInterval(() => {
+    progressIntervalRef.current = setInterval(() => {
       setScanProgress(prev => {
         const nextProgress = Math.min(prev + progressIncrement, 100)
         scanProgressRef.current = nextProgress
@@ -867,11 +912,22 @@ const EyeScan = () => {
         else setAnalysisPhase('Finalizing')
 
         if (prev >= 100) {
-          clearInterval(interval)
-          clearInterval(imageRotationInterval)
-          clearInterval(messageUpdateInterval)
+          // Clean up all intervals
+          if (progressIntervalRef.current) {
+            clearInterval(progressIntervalRef.current)
+            progressIntervalRef.current = null
+          }
+          if (imageRotationIntervalRef.current) {
+            clearInterval(imageRotationIntervalRef.current)
+            imageRotationIntervalRef.current = null
+          }
+          if (messageUpdateIntervalRef.current) {
+            clearInterval(messageUpdateIntervalRef.current)
+            messageUpdateIntervalRef.current = null
+          }
           if (captureIntervalRef.current) {
             clearInterval(captureIntervalRef.current)
+            captureIntervalRef.current = null
           }
 
           ;(async () => {
@@ -904,10 +960,10 @@ const EyeScan = () => {
             // Use last captured frame to compare against dataset using AI model
             let conditionResult = { matches: [], usedDataset: false }
             try {
-              if (lastFrameRef.current) {
+              if (lastFrameRef.current?.url) {
                 // Import conditionMatcher for AI comparison
                 const conditionMatcher = (await import('../services/conditionMatcher')).default
-                conditionResult = await conditionMatcher.matchUserSnapshot(lastFrameRef.current, 5)
+                conditionResult = await conditionMatcher.matchUserSnapshot(lastFrameRef.current.url, 5)
                 console.log('AI Model Comparison Result:', conditionResult)
               }
             } catch (e) {
@@ -940,9 +996,9 @@ const EyeScan = () => {
 
             let onDeviceProbabilities = []
             try {
-              if (lastFrameRef.current) {
+              if (lastFrameRef.current?.url) {
                 const conditionPredictor = (await import('../services/conditionPredictor')).default
-                const probabilities = await conditionPredictor.predict(lastFrameRef.current)
+                const probabilities = await conditionPredictor.predict(lastFrameRef.current.url)
                 if (probabilities?.length) {
                   onDeviceProbabilities = probabilities
                   setConditionProbabilities(probabilities)
@@ -1199,14 +1255,17 @@ const EyeScan = () => {
   useEffect(() => {
     // Auto-start scan immediately when face is detected and aligned - instant detection
     if (isAligned && !isScanning && faceDetected && scanPhase === 'preparation') {
+      console.log('Auto-starting scan - face detected and aligned')
       const msg = 'Perfect! Starting your eye scan now...'
       setAiMessage(msg)
       // Start immediately - no delay
-      if (faceDetected) {
-        startScan()
-      }
+      setTimeout(() => {
+        if (faceDetected && !isScanning) {
+          startScan()
+        }
+      }, 500) // Small delay to ensure state is updated
     }
-  }, [isAligned, faceDetected, scanPhase])
+  }, [isAligned, faceDetected, scanPhase, isScanning])
 
   const getPhaseTitle = () => {
     switch (scanPhase) {
@@ -1394,12 +1453,15 @@ const EyeScan = () => {
                 // Consider aligned if face is detected and roughly centered
                 const isRoughlyAligned = metrics.alignment && (
                   metrics.alignment.isWellAligned || 
-                  (Math.abs(metrics.alignment.horizontalOffset) < 0.3 && 
-                   Math.abs(metrics.alignment.verticalOffset) < 0.3)
+                  (Math.abs(metrics.alignment.horizontalOffset) < 0.4 && 
+                   Math.abs(metrics.alignment.verticalOffset) < 0.4) ||
+                  // Even more lenient - if face is detected, consider it aligned
+                  (metrics.faceWidth > 0.2 && metrics.faceHeight > 0.2)
                 )
                 
                 if (isRoughlyAligned && !isAligned) {
                   setIsAligned(true)
+                  console.log('Face aligned - ready to start scan')
                   // Don't speak - just proceed silently
                 } else if (!isRoughlyAligned && isAligned) {
                   setIsAligned(false)

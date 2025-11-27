@@ -19,6 +19,8 @@ const FaceDetector = ({
   const [eyeBoxes, setEyeBoxes] = useState({ left: null, right: null })
   const [faceMetrics, setFaceMetrics] = useState(null)
   const [confidence, setConfidence] = useState(0)
+  const lastUpdateRef = useRef(0)
+  const updateThrottleMs = 100 // Throttle state updates to every 100ms
 
   useEffect(() => {
     loadFaceMesh()
@@ -87,15 +89,26 @@ const FaceDetector = ({
   }
 
   const startProcessing = () => {
-    const processFrame = () => {
+    let lastProcessTime = 0
+    const throttleMs = 100 // Process every 100ms instead of 60fps (16ms) - 6x reduction
+    
+    const processFrame = (timestamp) => {
+      // Throttle processing to prevent freezing
+      if (timestamp - lastProcessTime < throttleMs) {
+        animationFrameRef.current = requestAnimationFrame(processFrame)
+        return
+      }
+      
+      lastProcessTime = timestamp
+      
       if (videoRef.current && faceMeshRef.current && faceMeshReadyRef.current) {
         const video = videoRef.current
-        // Process immediately when video is ready - no waiting
+        // Process when video is ready
         if (video.readyState >= video.HAVE_CURRENT_DATA && video.videoWidth > 0) {
           faceMeshRef.current.send({ image: video })
         }
       }
-      // Use requestAnimationFrame for smooth, fast processing
+      // Continue processing with throttling
       animationFrameRef.current = requestAnimationFrame(processFrame)
     }
     
@@ -128,6 +141,13 @@ const FaceDetector = ({
   }
 
   const handleFaceMeshResults = (results) => {
+    // Throttle updates to prevent freezing
+    const now = Date.now()
+    if (now - lastUpdateRef.current < updateThrottleMs && faceDetected) {
+      return // Skip this update - too frequent
+    }
+    lastUpdateRef.current = now
+    
     if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
       // No face detected
       if (faceDetected) {

@@ -791,3 +791,17 @@
   }
 }
 
+.dashboard-voice-bot {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 999;
+}
+
+@media (max-width: 768px) {
+  .dashboard-voice-bot {
+    bottom: 1rem;
+    right: 1rem;
+  }
+}
+

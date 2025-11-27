@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import storage from '../utils/storage'
 import api from '../utils/api'
 import EmptyState from '../components/EmptyState'
+import VoiceBot from '../components/VoiceBot'
 import './Dashboard.css'
 
 const Dashboard = () => {
@@ -333,6 +334,16 @@ const Dashboard = () => {
             onAction={() => navigate('/eye-scan')}
           />
         )}
+      </div>
+      
+      {/* Floating Voice Bot */}
+      <div className="dashboard-voice-bot">
+        <VoiceBot 
+          screenContent={{
+            title: 'Dashboard',
+            description: 'Your vision health overview and test history'
+          }}
+        />
       </div>
     </div>
   )

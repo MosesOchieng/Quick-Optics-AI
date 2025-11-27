@@ -18,7 +18,7 @@ import Payment from './pages/Payment'
 import AIAnalytics from './pages/AIAnalytics'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
-import VisionTrainer from './pages/VisionTrainer'
+// VisionTrainer removed - games integrated into VisionTests
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 import PaymentConfirmation from './pages/PaymentConfirmation'
@@ -96,7 +96,7 @@ function App() {
             <Route path="/ai-analytics" element={<AIAnalytics />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
-            <Route path="/vision-trainer" element={<VisionTrainer />} />
+            {/* VisionTrainer route removed - games integrated into VisionTests */}
             <Route path="/settings" element={<Settings />} />
             <Route path="/login" element={<Login />} />
             <Route path="/payment-confirmation" element={<PaymentConfirmation />} />

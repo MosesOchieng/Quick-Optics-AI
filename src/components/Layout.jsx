@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useState } from 'react'
 import './Layout.css'
 
 const Layout = ({ children }) => {
   const location = useLocation()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const isHomePage = location.pathname === '/'
   const isOnboarding = location.pathname === '/onboarding'
   const isAuthPage = ['/login', '/signup', '/payment-confirmation'].includes(location.pathname)
@@ -23,21 +25,50 @@ const Layout = ({ children }) => {
   return (
     <div className="layout">
       {!hideNavbar && (
-        <nav className="navbar">
-          <div className="nav-container">
-            <Link to="/" className="nav-logo">
-              <img src="/Logo.jpeg" alt="Quick Optics AI" className="nav-logo-image" />
-            </Link>
-            <div className="nav-links">
-              <Link to="/" className="nav-link">Home</Link>
-              <Link to="/dashboard" className="nav-link">Dashboard</Link>
-              <Link to="/vision-trainer" className="nav-link">Trainer</Link>
-              <Link to="/profile" className="nav-link">Profile</Link>
-              <Link to="/settings" className="nav-link">Settings</Link>
-              <Link to="/contact" className="nav-link">Contact</Link>
+        <>
+          <nav className="navbar">
+            <div className="nav-container">
+              <Link to="/" className="nav-logo">
+                <img src="/Logo.jpeg" alt="Quick Optics AI" className="nav-logo-image" />
+              </Link>
+              <div className="nav-links desktop-nav">
+                <Link to="/" className="nav-link">Home</Link>
+                <Link to="/dashboard" className="nav-link">Dashboard</Link>
+                <Link to="/profile" className="nav-link">Profile</Link>
+                <Link to="/settings" className="nav-link">Settings</Link>
+                <Link to="/contact" className="nav-link">Contact</Link>
+              </div>
+              <button 
+                className="mobile-menu-toggle"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                aria-label="Toggle menu"
+              >
+                <span className={`hamburger ${sidebarOpen ? 'open' : ''}`}>
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </span>
+              </button>
+            </div>
+          </nav>
+          
+          {/* Mobile Sidebar */}
+          <div className={`mobile-sidebar ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <div className="sidebar-content" onClick={(e) => e.stopPropagation()}>
+              <div className="sidebar-header">
+                <img src="/Logo.jpeg" alt="Quick Optics AI" className="sidebar-logo" />
+                <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>×</button>
+              </div>
+              <nav className="sidebar-nav">
+                <Link to="/" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Home</Link>
+                <Link to="/dashboard" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Dashboard</Link>
+                <Link to="/profile" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Profile</Link>
+                <Link to="/settings" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Settings</Link>
+                <Link to="/contact" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Contact</Link>
+              </nav>
             </div>
           </div>
-        </nav>
+        </>
       )}
       <main className="main-content">{children}</main>
       {!isOnboarding && !isAuthPage && !isTestPage && (
