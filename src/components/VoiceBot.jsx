@@ -123,9 +123,10 @@ const VoiceBot = ({
             // Enhanced mobile-optimized fallback
             try {
               await mobileSpeech.speak(text, {
-                rate: 0.9,
-                pitch: 1.2,
-                preferFemale: true
+                rate: 0.8, // Slightly slower for better clarity
+                pitch: 1.1, // Professional female pitch
+                volume: 1.0,
+                preferFemale: true // Always use female voice for Dr. AI
               })
               finishSpeaking()
             } catch (mobileError) {
@@ -133,8 +134,26 @@ const VoiceBot = ({
               // Final fallback to basic browser TTS
               if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance(text)
-                utterance.rate = 0.9
-                utterance.pitch = 1.2
+                utterance.rate = 0.8
+                utterance.pitch = 1.1
+                utterance.volume = 1.0
+                
+                // Try to select a female voice for Dr. AI
+                const voices = window.speechSynthesis.getVoices()
+                const femaleVoice = voices.find(voice => 
+                  voice.name.toLowerCase().includes('female') ||
+                  voice.name.toLowerCase().includes('samantha') ||
+                  voice.name.toLowerCase().includes('karen') ||
+                  voice.name.toLowerCase().includes('susan') ||
+                  voice.name.toLowerCase().includes('victoria') ||
+                  voice.name.toLowerCase().includes('zira') ||
+                  voice.name.toLowerCase().includes('rachel')
+                )
+                
+                if (femaleVoice) {
+                  utterance.voice = femaleVoice
+                }
+                
                 utterance.onend = finishSpeaking
                 utterance.onerror = finishSpeaking
                 window.speechSynthesis.speak(utterance)
@@ -237,9 +256,9 @@ const VoiceBot = ({
     if (mode === 'test') {
       welcomeText = getTestWelcome(testType)
     } else if (mode === 'game') {
-      welcomeText = 'Welcome to Vision Trainer! I\'ll guide you through each mini-game. Listen carefully to my instructions.'
+      welcomeText = 'Hello! I\'m Dr. AI, and I\'ll guide you through these vision training exercises. Think of them as fun eye workouts that help improve your visual skills.'
     } else {
-      welcomeText = 'Welcome! I\'m your voice guide. I\'ll help you through the vision testing process. Just listen and follow my instructions.'
+      welcomeText = 'Hello! I\'m Dr. AI, your personal vision care assistant. I\'m here to guide you through your comprehensive eye examination with the same care and expertise you\'d receive in my office. Let\'s begin!'
     }
     
     speak(welcomeText)
@@ -247,15 +266,15 @@ const VoiceBot = ({
 
   const getTestWelcome = (type) => {
     const welcomes = {
-      'eye-scan': 'Welcome to the Eye Scan! Please look straight at the camera and hold still. I will guide you through the scanning process.',
-      'myopia': 'Starting the Myopia Test. This checks for nearsightedness. Read the letters as they appear and tell me what you see.',
-      'hyperopia': 'Next is the Hyperopia Test. This measures farsightedness. Focus on the text and tell me which one is clearer.',
-      'astigmatism': 'This is the Astigmatism Test. Look at the line patterns and identify which one appears clearest.',
-      'color': 'Time for the Color Blindness Test. Look at the colored dots and tell me what number you see.',
-      'contrast': 'Now the Contrast Sensitivity Test. Choose the shape with the best contrast.',
-      'dry-eye': 'Finally, the Dry Eye Risk Test. Please answer the questions honestly.'
+      'eye-scan': 'Perfect! Now I can see you clearly. I\'m going to examine your eyes just like I would in my office. Please look straight at the camera and hold still. I\'ll guide you through each step of the scanning process.',
+      'myopia': 'Now we\'re testing for nearsightedness, which is very common. I\'ll show you some letters at different sizes. Just read them out loud as they appear, and don\'t worry if some seem blurry - that\'s exactly what I need to know.',
+      'hyperopia': 'Next, I\'m checking for farsightedness. You\'ll see some text at different distances. Tell me which one appears clearer to you. There are no wrong answers - I just need to understand how your eyes focus.',
+      'astigmatism': 'This test checks if your cornea has an irregular shape, which can cause blurry vision. Look at these line patterns and tell me which ones appear sharpest. Take your time.',
+      'color': 'Now I\'m testing your color vision. You\'ll see some colored dots with numbers hidden inside. Tell me what numbers you can see. Some people see them differently, and that\'s perfectly normal.',
+      'contrast': 'This test measures how well you can distinguish between different shades. Choose the shape that has the best contrast. This helps me understand your visual sensitivity.',
+      'dry-eye': 'Finally, I\'d like to ask you some questions about dry eye symptoms. This is very common, especially with screen use. Please answer honestly - it helps me give you better recommendations.'
     }
-    return welcomes[type] || 'Welcome to the vision test. I\'ll guide you through each step.'
+    return welcomes[type] || 'I\'m Dr. AI, and I\'ll be your guide through this vision assessment. Think of this as a comprehensive eye exam, just like visiting my office, but from the comfort of your home.'
   }
 
   const handleAnswer = (answer) => {

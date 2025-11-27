@@ -196,7 +196,7 @@ const EyeScan = () => {
   useEffect(() => {
     // Don't auto-start scan - wait for alignment instead
     if (!faceDetected && !isScanning) {
-      setAiMessage('Align your face within the guide so both eyes are visible.')
+      setAiMessage('I need to see your face clearly. Please position yourself so both eyes are visible in the camera.')
       setIsAligned(false)
     }
   }, [faceDetected, isScanning])
@@ -403,7 +403,7 @@ const EyeScan = () => {
         videoRef.current.srcObject = stream
       }
       setIsAligned(false)
-      setAiMessage('Position your face inside the frame until both eyes are visible.')
+      setAiMessage('Hello! I\'m Dr. AI. Please position your face inside the frame so I can see both of your eyes clearly.')
     } catch (error) {
       console.error('Error accessing camera:', error)
       alert('Unable to access camera. Please check permissions.')
@@ -440,7 +440,7 @@ const EyeScan = () => {
         setCapturedFrames([])
         setCanProceedToNext(false)
         
-        const rightEyeMsg = 'Great! Now we\'ll analyze your right eye. Look straight ahead and keep your right eye open.'
+        const rightEyeMsg = 'Excellent work! Your left eye analysis is complete. Now I need to examine your right eye. Please look straight ahead and keep both eyes open - I\'ll focus on your right eye this time.'
         setAiMessage(rightEyeMsg)
         speakGuidance(rightEyeMsg, true)
         break
@@ -458,7 +458,7 @@ const EyeScan = () => {
         setCurrentEye('both')
         setIsScanning(false)
         
-        const comparisonMsg = 'Excellent! Starting Digital Image Transformation Pipeline for clinical-grade analysis.'
+        const comparisonMsg = 'Perfect! Both eyes have been analyzed successfully. Now I\'m processing your images through our Digital Image Transformation Pipeline to create clinical-grade analysis. This is where the magic happens - I\'m comparing your results with thousands of medical images to give you the most accurate assessment possible.'
         setAiMessage(comparisonMsg)
         speakGuidance(comparisonMsg, true)
         
@@ -579,7 +579,7 @@ const EyeScan = () => {
   const startScan = () => {
     // CRITICAL: Don't start scan without face detection
     if (!faceDetected) {
-      const msg = 'We can\'t detect your face yet. Please position your face in front of the camera so we can see your eyes clearly.'
+      const msg = 'I can\'t see your face clearly yet. Please move closer to the camera and position your face so I can see both of your eyes. Don\'t worry, I\'ll guide you through this step by step.'
       setAiMessage(msg)
       speakGuidance(msg, true) // Force speak
       setIsAligned(false)
@@ -598,8 +598,8 @@ const EyeScan = () => {
     if (scanPhase === 'preparation') {
       setScanPhase('left-eye')
       setCurrentEye('left')
-      setAiMessage('Starting left eye analysis. Look straight ahead and keep your left eye open.')
-      speakGuidance('Starting left eye analysis. Look straight ahead and keep your left eye open.', true)
+      setAiMessage('Perfect! Now I\'m starting with your left eye analysis. Please look straight ahead and keep both eyes open naturally. I\'ll be focusing on your left eye first, just like I would during an in-office examination.')
+      speakGuidance('Perfect! Now I\'m starting with your left eye analysis. Please look straight ahead and keep both eyes open naturally. I\'ll be focusing on your left eye first, just like I would during an in-office examination.', true)
     }
 
     setIsScanning(true)

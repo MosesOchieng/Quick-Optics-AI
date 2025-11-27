@@ -31,12 +31,6 @@ const Home = () => {
     }
   ]
 
-  const stats = [
-    { number: '50K+', label: 'Tests Completed' },
-    { number: '98%', label: 'Accuracy Rate' },
-    { number: '5min', label: 'Average Test Time' },
-    { number: '24/7', label: 'Available' }
-  ]
 
   return (
     <div className="home">
@@ -56,33 +50,19 @@ const Home = () => {
             className="hero-content"
           >
             <div className="hero-badge">
-              <span className="badge-icon">✨</span>
-              <span>AI-Powered Vision Testing</span>
+              <img src="/Logo.jpeg" alt="Quick Optics AI" className="logo-icon" />
+              <span>Quick Optics AI</span>
             </div>
             
             <h1 className="hero-title">
-              Your Vision,
-              <span className="gradient-text"> Analyzed Instantly</span>
+              Professional Vision Testing,
+              <span className="gradient-text"> Simplified</span>
             </h1>
             
             <p className="hero-description">
               Transform your smartphone into a professional vision testing device. Get comprehensive eye analysis, AI insights, and personalized recommendations in minutes.
             </p>
 
-            <div className="hero-stats">
-              {stats.map((stat, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
-                  className="stat-item"
-                >
-                  <div className="stat-number">{stat.number}</div>
-                  <div className="stat-label">{stat.label}</div>
-                </motion.div>
-              ))}
-            </div>
 
             <div className="hero-actions">
               <Link to="/start-test" className="btn btn-primary">
@@ -91,7 +71,10 @@ const Home = () => {
                   <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
               </Link>
-              <Link to="/how-it-works" className="btn btn-secondary">
+              <Link to="/dashboard" className="btn btn-secondary">
+                <span>Get Started</span>
+              </Link>
+              <Link to="/how-it-works" className="btn btn-outline">
                 <span>How It Works</span>
               </Link>
             </div>
@@ -322,81 +305,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* How it works section */}
-      <section className="how-it-works">
-        <div className="how-it-works-container">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="how-it-works-header"
-          >
-            <h2 className="how-it-works-title">
-              How It <span className="gradient-text">Works</span>
-            </h2>
-            <p className="how-it-works-subtitle">
-              Three simple steps to comprehensive vision analysis
-            </p>
-          </motion.div>
-
-          <div className="steps-container">
-            <div className="steps-timeline"></div>
-            {[
-              {
-                number: "01",
-                title: "Start Your Test",
-                description: "Position your face in front of the camera and follow our guided setup process.",
-                icon: "📱"
-              },
-              {
-                number: "02", 
-                title: "AI Analysis",
-                description: "Our advanced AI analyzes your vision patterns, eye movements, and visual responses.",
-                icon: "🤖"
-              },
-              {
-                number: "03",
-                title: "Get Results",
-                description: "Receive detailed insights, recommendations, and personalized eyewear suggestions.",
-                icon: "📊"
-              }
-            ].map((step, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: index * 0.2 }}
-                className={`step-card ${index % 2 === 0 ? 'step-left' : 'step-right'}`}
-              >
-                <div className="step-number-badge">{step.number}</div>
-                <div className="step-icon">{step.icon}</div>
-                <div className="step-content">
-                  <h3 className="step-title">{step.title}</h3>
-                  <p className="step-description">{step.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.6 }}
-            className="cta-section"
-          >
-            <div className="cta-card">
-              <h3>Ready to test your vision?</h3>
-              <p>Join thousands of users who trust Quick Optics AI for their vision health</p>
-              <Link to="/start-test" className="btn btn-primary">
-                Start Free Test Now
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
     </div>
   )
 }

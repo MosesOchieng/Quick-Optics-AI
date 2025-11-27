@@ -11,33 +11,64 @@ const StartTest = () => {
 
   const screens = [
     {
-      title: 'Welcome',
-      subtitle: 'Quick, safe, and accurate vision testing.',
+      title: 'Welcome to Quick Optics AI',
+      subtitle: 'Meet Dr. AI - Your Personal Vision Care Assistant',
       content: (
         <div className="welcome-content">
-          <div className="welcome-icon">👁️</div>
-          <p className="welcome-text">
-            Our AI-powered vision test takes just a few minutes and provides instant results.
-            No appointments needed.
-          </p>
+          <div className="doctor-avatar">
+            <div className="avatar-circle">
+              <span className="doctor-icon">👩‍⚕️</span>
+            </div>
+            <div className="doctor-intro">
+              <h3>Dr. AI</h3>
+              <p>Your Virtual Eye Care Specialist</p>
+            </div>
+          </div>
+          <div className="welcome-message">
+            <p className="greeting">
+              Hello! I'm Dr. AI, and I'll be guiding you through your comprehensive vision assessment today. 
+            </p>
+            <p className="reassurance">
+              Don't worry - this is completely painless and takes just 3-5 minutes. I'll be with you every step of the way, 
+              explaining what we're doing and why. Think of it as having a friendly eye doctor right in your pocket!
+            </p>
+          </div>
         </div>
       ),
-      buttonText: 'Next',
+      buttonText: 'Nice to meet you, Dr. AI!',
       onButtonClick: () => setCurrentScreen(1)
     },
     {
-      title: 'Allow Camera',
-      subtitle: 'We need camera access to scan your eyes.',
+      title: 'Camera Setup',
+      subtitle: 'Let me help you set up your camera for the best results.',
       content: (
         <div className="camera-permission-content">
-          <div className="camera-icon">📷</div>
-          <p className="permission-text">
-            Your privacy is important. Camera access is only used for vision testing
-            and is never stored or shared.
-          </p>
+          <div className="doctor-explanation">
+            <div className="explanation-icon">📷</div>
+            <div className="explanation-text">
+              <p className="doctor-voice">
+                "Now I need to access your camera so I can see your eyes clearly. This is just like when you visit my office - 
+                I need to look at your eyes to assess your vision health."
+              </p>
+              <div className="privacy-assurance">
+                <div className="assurance-item">
+                  <span className="check-icon">🔒</span>
+                  <span>Your privacy is completely protected</span>
+                </div>
+                <div className="assurance-item">
+                  <span className="check-icon">📱</span>
+                  <span>Images are processed locally on your device</span>
+                </div>
+                <div className="assurance-item">
+                  <span className="check-icon">🚫</span>
+                  <span>No data is stored or shared without permission</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ),
-      buttonText: 'Enable Camera',
+      buttonText: 'Enable Camera Access',
       onButtonClick: async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true })
@@ -46,27 +77,41 @@ const StartTest = () => {
           setCurrentScreen(2)
         } catch (error) {
           setCameraPermission(false)
-          alert('Camera access is required for vision testing. Please enable it in your browser settings.')
+          alert('I need camera access to examine your eyes. Please enable it in your browser settings and try again.')
         }
       }
     },
     {
-      title: 'Align Your Face',
-      subtitle: 'Position your face within the frame.',
+      title: 'Perfect! Let\'s Begin',
+      subtitle: 'Dr. AI will guide you through the positioning process.',
       content: (
         <div className="align-content">
-          <div className="alignment-preview">
-            <div className="alignment-frame">
-              <div className="alignment-guide"></div>
+          <div className="doctor-guidance">
+            <div className="guidance-avatar">👩‍⚕️</div>
+            <div className="guidance-text">
+              <p className="doctor-voice">
+                "Excellent! Now I can see you clearly. In the next step, I'll help you position your face so I can get the best view of your eyes."
+              </p>
+              <div className="what-to-expect">
+                <h4>What to expect:</h4>
+                <div className="expectation-item">
+                  <span className="step-number">1</span>
+                  <span>I'll help you align your face in the camera</span>
+                </div>
+                <div className="expectation-item">
+                  <span className="step-number">2</span>
+                  <span>We'll scan each eye individually for accuracy</span>
+                </div>
+                <div className="expectation-item">
+                  <span className="step-number">3</span>
+                  <span>I'll explain everything as we go</span>
+                </div>
+              </div>
             </div>
           </div>
-          <p className="align-instruction">
-            Move closer... Perfect. Keep your face centered and look straight ahead.
-          </p>
         </div>
       ),
-      buttonText: 'Start Test',
-      // First go to eye scan (with camera + circles), then EyeScan will forward to /vision-tests
+      buttonText: 'I\'m ready, Dr. AI!',
       onButtonClick: () => navigate('/eye-scan')
     }
   ]

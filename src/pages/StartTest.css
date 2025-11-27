@@ -86,6 +86,187 @@
   gap: 1.5rem;
 }
 
+/* Doctor Avatar Styles */
+.doctor-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.avatar-circle {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #14b8a6, #06b6d4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.4);
+  animation: gentle-pulse 3s ease-in-out infinite;
+}
+
+@keyframes gentle-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 10px 25px -5px rgba(20, 184, 166, 0.4);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 15px 35px -5px rgba(20, 184, 166, 0.6);
+  }
+}
+
+.doctor-icon {
+  font-size: 2.5rem;
+}
+
+.doctor-intro h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 0.25rem 0;
+}
+
+.doctor-intro p {
+  font-size: 0.875rem;
+  color: var(--primary-teal);
+  font-weight: 600;
+  margin: 0;
+}
+
+.welcome-message {
+  text-align: center;
+  max-width: 450px;
+}
+
+.greeting {
+  font-size: 1.125rem;
+  color: var(--gray-700);
+  font-weight: 600;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.reassurance {
+  font-size: 1rem;
+  color: var(--gray-600);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Doctor Explanation Styles */
+.doctor-explanation {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.explanation-icon {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+}
+
+.explanation-text {
+  max-width: 450px;
+}
+
+.doctor-voice {
+  font-size: 1.125rem;
+  color: var(--gray-700);
+  font-style: italic;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: rgba(20, 184, 166, 0.05);
+  border-radius: 0.75rem;
+  border-left: 4px solid var(--primary-teal);
+}
+
+.privacy-assurance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.assurance-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  color: var(--gray-600);
+}
+
+.check-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+/* Doctor Guidance Styles */
+.doctor-guidance {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  text-align: center;
+  max-width: 500px;
+}
+
+.guidance-avatar {
+  font-size: 4rem;
+  margin-bottom: 0.5rem;
+}
+
+.guidance-text {
+  width: 100%;
+}
+
+.what-to-expect {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  background: rgba(20, 184, 166, 0.05);
+  border-radius: 1rem;
+  text-align: left;
+}
+
+.what-to-expect h4 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin: 0 0 1rem 0;
+  text-align: center;
+}
+
+.expectation-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+  color: var(--gray-700);
+}
+
+.expectation-item:last-child {
+  margin-bottom: 0;
+}
+
+.step-number {
+  width: 24px;
+  height: 24px;
+  background: var(--primary-teal);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
 .welcome-icon,
 .camera-icon {
   font-size: 5rem;
