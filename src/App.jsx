@@ -21,6 +21,7 @@ import Terms from './pages/Terms'
 // VisionTrainer removed - games integrated into VisionTests
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import Verify from './pages/Verify'
 import PaymentConfirmation from './pages/PaymentConfirmation'
 import NotFound from './pages/NotFound'
 import Settings from './pages/Settings'
@@ -102,8 +103,9 @@ function App() {
             {/* VisionTrainer route removed - games integrated into VisionTests */}
             <Route path="/settings" element={<Settings />} />
             <Route path="/login" element={<Login />} />
-            <Route path="/payment-confirmation" element={<PaymentConfirmation />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/verify" element={<Verify />} />
+            <Route path="/payment-confirmation" element={<PaymentConfirmation />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
