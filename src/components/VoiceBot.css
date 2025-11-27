@@ -3,19 +3,59 @@
   bottom: 2rem;
   right: 2rem;
   z-index: 1000;
-  background: linear-gradient(135deg, var(--primary-teal) 0%, var(--primary-teal-dark) 100%);
-  border: none;
-  border-radius: 50px;
+  background: var(--white);
+  border: 2px solid var(--primary-teal);
+  border-radius: 20px;
   padding: 1rem 1.5rem;
-  color: var(--white);
+  color: var(--gray-800);
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(20, 184, 166, 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   transition: all 0.3s ease;
+  min-width: 200px;
+  backdrop-filter: blur(10px);
+}
+
+.voice-bot-inactive {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 1000;
+}
+
+.bot-avatar {
+  font-size: 1.5rem;
+  width: 40px;
+  height: 40px;
+  background: var(--primary-teal);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bot-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.bot-name {
+  font-weight: 700;
+  color: var(--gray-900);
+  font-size: 1rem;
+}
+
+.bot-subtitle {
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  font-weight: 500;
 }
 
 .voice-bot-toggle:hover {
@@ -35,18 +75,90 @@
 }
 
 .voice-bot-main {
-  background: transparent;
-  border-radius: 50%;
-  padding: 0;
-  box-shadow: none;
+  background: var(--white);
+  border-radius: 20px;
+  padding: 1.5rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  min-width: auto;
-  border: none;
+  gap: 1rem;
+  min-width: 280px;
+  border: 2px solid var(--primary-teal);
   position: relative;
+  backdrop-filter: blur(10px);
+}
+
+.voice-bot-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.voice-bot-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.voice-bot-avatar {
+  width: 45px;
+  height: 45px;
+  background: var(--primary-teal);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.voice-bot-name {
+  font-weight: 700;
+  color: var(--gray-900);
+  font-size: 1.1rem;
+}
+
+.voice-bot-status {
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  margin-top: 0.25rem;
+}
+
+.voice-bot-close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--gray-500);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.voice-bot-close:hover {
+  background: var(--gray-100);
+  color: var(--gray-700);
+}
+
+.voice-bot-instructions {
+  text-align: center;
+  width: 100%;
+}
+
+.voice-bot-instructions p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+  line-height: 1.4;
 }
 
 .mic-button {

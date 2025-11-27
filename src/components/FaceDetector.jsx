@@ -56,8 +56,8 @@ const FaceDetector = ({
       faceMeshRef.current.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
-        minDetectionConfidence: 0.7,
-        minTrackingConfidence: 0.5
+        minDetectionConfidence: 0.5, // Lower threshold for easier detection
+        minTrackingConfidence: 0.3    // Lower threshold for more stable tracking
       })
 
       faceMeshRef.current.onResults(handleFaceMeshResults)
@@ -81,6 +81,30 @@ const FaceDetector = ({
     }
     
     animationFrameRef.current = requestAnimationFrame(processFrame)
+  }
+
+  const getAlignmentGuidance = (horizontalOffset, verticalOffset) => {
+    const threshold = 0.05 // Small movements threshold
+    
+    if (Math.abs(horizontalOffset) < threshold && Math.abs(verticalOffset) < threshold) {
+      return "Perfect! Hold still."
+    }
+    
+    let guidance = []
+    
+    if (horizontalOffset > threshold) {
+      guidance.push("Move slightly left")
+    } else if (horizontalOffset < -threshold) {
+      guidance.push("Move slightly right")
+    }
+    
+    if (verticalOffset > threshold) {
+      guidance.push("Move up a bit")
+    } else if (verticalOffset < -threshold) {
+      guidance.push("Move down a bit")
+    }
+    
+    return guidance.length > 0 ? guidance.join(" and ") : "Almost there!"
   }
 
   const handleFaceMeshResults = (results) => {
@@ -119,14 +143,29 @@ const FaceDetector = ({
     const faceWidth = maxX - minX
     const faceHeight = maxY - minY
     
-    // Calculate face box with padding
-    const padding = 0.1
+    // Calculate face box with more generous padding for easier alignment
+    const padding = 0.15 // Increased padding
     const paddedFaceBox = {
       x: Math.max(0, minX - faceWidth * padding),
       y: Math.max(0, minY - faceHeight * padding),
       width: Math.min(1, faceWidth * (1 + 2 * padding)),
       height: Math.min(1, faceHeight * (1 + 2 * padding))
     }
+
+    // Calculate alignment guidance
+    const faceCenterX = (minX + maxX) / 2
+    const faceCenterY = (minY + maxY) / 2
+    const screenCenterX = 0.5
+    const screenCenterY = 0.5
+    
+    const horizontalOffset = faceCenterX - screenCenterX
+    const verticalOffset = faceCenterY - screenCenterY
+    
+    // More lenient alignment thresholds
+    const alignmentThreshold = 0.15 // Increased from typical 0.1
+    const isHorizontallyAligned = Math.abs(horizontalOffset) < alignmentThreshold
+    const isVerticallyAligned = Math.abs(verticalOffset) < alignmentThreshold
+    const isWellAligned = isHorizontallyAligned && isVerticallyAligned
 
     setFaceBox(paddedFaceBox)
 
@@ -190,8 +229,16 @@ const FaceDetector = ({
         box: rightEyeBox
       },
       faceCenter: {
-        x: (minX + maxX) / 2,
-        y: (minY + maxY) / 2
+        x: faceCenterX,
+        y: faceCenterY
+      },
+      alignment: {
+        horizontalOffset: horizontalOffset,
+        verticalOffset: verticalOffset,
+        isHorizontallyAligned: isHorizontallyAligned,
+        isVerticallyAligned: isVerticallyAligned,
+        isWellAligned: isWellAligned,
+        guidance: getAlignmentGuidance(horizontalOffset, verticalOffset)
       },
       landmarks: landmarks
     }

@@ -33,44 +33,123 @@ const VisionTests = () => {
     }
     }, [location.state])
 
-  const tests = [
-    {
-      id: 'myopia',
-      name: 'Myopia Test',
-      description: 'Test for nearsightedness',
-      component: MyopiaTest
-    },
-    {
-      id: 'hyperopia',
-      name: 'Hyperopia Test',
-      description: 'Test for farsightedness',
-      component: HyperopiaTest
-    },
-    {
-      id: 'astigmatism',
-      name: 'Astigmatism Test',
-      description: 'Test for astigmatism',
-      component: AstigmatismTest
-    },
-    {
-      id: 'color',
-      name: 'Color Blindness Test',
-      description: 'Test for color vision',
-      component: ColorBlindnessTest
-    },
-    {
-      id: 'contrast',
-      name: 'Contrast Sensitivity Test',
-      description: 'Test contrast perception',
-      component: ContrastTest
-    },
-    {
-      id: 'dry-eye',
-      name: 'Dry Eye Risk Test',
-      description: 'Assess dry eye symptoms',
-      component: DryEyeTest
+  // Load recommended tests from consultation or use default
+  const getRecommendedTests = () => {
+    const recommended = localStorage.getItem('recommended_tests')
+    if (recommended) {
+      const tests = JSON.parse(recommended)
+      return tests.map(test => {
+        switch (test.id) {
+          case 'refractive-assessment':
+            return [
+              {
+                id: 'myopia',
+                name: 'Vision Clarity Game - Distance',
+                description: 'Interactive test for nearsightedness',
+                component: MyopiaTest,
+                gameMode: true,
+                reason: test.reason
+              },
+              {
+                id: 'hyperopia',
+                name: 'Vision Clarity Game - Close-up',
+                description: 'Interactive test for farsightedness',
+                component: HyperopiaTest,
+                gameMode: true,
+                reason: test.reason
+              },
+              {
+                id: 'astigmatism',
+                name: 'Shape Recognition Game',
+                description: 'Interactive test for astigmatism',
+                component: AstigmatismTest,
+                gameMode: true,
+                reason: test.reason
+              }
+            ]
+          case 'digital-eye-strain':
+            return [
+              {
+                id: 'contrast',
+                name: 'Screen Comfort Test',
+                description: 'Assess digital eye strain symptoms',
+                component: ContrastTest,
+                gameMode: true,
+                reason: test.reason
+              },
+              {
+                id: 'dry-eye',
+                name: 'Blink Rate Challenge',
+                description: 'Interactive dry eye assessment',
+                component: DryEyeTest,
+                gameMode: true,
+                reason: test.reason
+              }
+            ]
+          case 'contrast-sensitivity':
+            return [
+              {
+                id: 'contrast',
+                name: 'Night Vision Challenge',
+                description: 'Test low-light vision abilities',
+                component: ContrastTest,
+                gameMode: true,
+                nightMode: true,
+                reason: test.reason
+              }
+            ]
+          case 'risk-screening':
+            return [
+              {
+                id: 'color',
+                name: 'Color Pattern Detection',
+                description: 'Advanced color vision screening',
+                component: ColorBlindnessTest,
+                gameMode: true,
+                advancedMode: true,
+                reason: test.reason
+              }
+            ]
+          default:
+            return []
+        }
+      }).flat()
     }
-  ]
+    
+    // Default tests if no consultation done
+    return [
+      {
+        id: 'myopia',
+        name: 'Vision Clarity Game - Distance',
+        description: 'Interactive test for nearsightedness',
+        component: MyopiaTest,
+        gameMode: true
+      },
+      {
+        id: 'hyperopia',
+        name: 'Vision Clarity Game - Close-up',
+        description: 'Interactive test for farsightedness',
+        component: HyperopiaTest,
+        gameMode: true
+      },
+      {
+        id: 'astigmatism',
+        name: 'Shape Recognition Game',
+        description: 'Interactive test for astigmatism',
+        component: AstigmatismTest,
+        gameMode: true
+      },
+      {
+        id: 'color',
+        name: 'Color Pattern Detection',
+        description: 'Interactive color vision test',
+        component: ColorBlindnessTest,
+        gameMode: true
+      }
+    ]
+  }
+
+  const tests = getRecommendedTests()
 
   const handleTestComplete = (testId, result) => {
     setTestResults(prev => ({ ...prev, [testId]: result }))

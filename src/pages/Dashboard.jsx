@@ -98,8 +98,57 @@ const Dashboard = () => {
       <div className="dashboard-container">
         <div className="dashboard-header">
           <h1>Welcome back{user?.name ? `, ${user.name}` : ''}!</h1>
-          <p>Your vision health overview</p>
+          <p>Your personal vision health companion</p>
         </div>
+
+        {/* Pre-Test Consultation Card */}
+        <motion.div
+          className="consultation-card"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="consultation-icon">🩺</div>
+          <div className="consultation-content">
+            <h3>Ready for your vision assessment?</h3>
+            <p>Let Dr. AI explain the process and recommend the best tests for you</p>
+            <div className="consultation-actions">
+              <button 
+                className="btn btn-primary consultation-btn"
+                onClick={() => navigate('/pre-test-consultation')}
+              >
+                Start Consultation
+              </button>
+              
+              {/* Development Test Links - Only show in development */}
+              {(process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') && (
+                <>
+                  <button 
+                    className="btn btn-outline consultation-btn"
+                    onClick={() => navigate('/test-ai')}
+                    style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+                  >
+                    🧪 Test AI System
+                  </button>
+                  <button 
+                    className="btn btn-outline consultation-btn"
+                    onClick={() => navigate('/eye-scan')}
+                    style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+                  >
+                    🔥 See DITP Loader
+                  </button>
+                  <button 
+                    className="btn btn-outline consultation-btn"
+                    onClick={() => navigate('/backend-test')}
+                    style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
+                  >
+                    🏥 Test Backend
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </motion.div>
 
         {recentTest ? (
           <div className="dashboard-content">

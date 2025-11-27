@@ -25,6 +25,9 @@ import PaymentConfirmation from './pages/PaymentConfirmation'
 import NotFound from './pages/NotFound'
 import Settings from './pages/Settings'
 import Contact from './pages/Contact'
+import PreTestConsultation from './pages/PreTestConsultation'
+import TestAI from './pages/TestAI'
+import BackendTest from './pages/BackendTest'
 import Layout from './components/Layout'
 import InstallPrompt from './components/InstallPrompt'
 
@@ -56,6 +59,9 @@ function App() {
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/pre-test-consultation" element={<PreTestConsultation />} />
+            <Route path="/test-ai" element={<TestAI />} />
+            <Route path="/backend-test" element={<BackendTest />} />
             <Route path="/start-test" element={<StartTest />} />
             <Route path="/eye-scan" element={<EyeScan />} />
             <Route path="/vision-tests" element={<VisionTests />} />

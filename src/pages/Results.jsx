@@ -366,6 +366,16 @@ const Results = () => {
             >
               🖨️ Print
             </button>
+            
+            {/* AR Try-On Button - Show if prescription needed */}
+            {(results.myopia?.detected || results.hyperopia?.detected || results.astigmatism?.detected) && (
+              <button
+                className="btn btn-primary"
+                onClick={() => navigate('/ar-try-on', { state: { testResults: results } })}
+              >
+                🥽 Try On Glasses (AR)
+              </button>
+            )}
             {!hasPaid && (
               <button
                 className="btn btn-primary btn-large"

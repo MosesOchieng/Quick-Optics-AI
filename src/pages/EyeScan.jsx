@@ -9,12 +9,14 @@ import ARCalibrationVisualizer from '../components/ARCalibrationVisualizer'
 import ImageAnnotationTool from '../components/ImageAnnotationTool'
 import TestLayout from '../components/TestLayout'
 import FaceDetector from '../components/FaceDetector'
+import DITPLoader from '../components/DITPLoader'
 import cloudConditionScorer from '../services/cloudConditionScorer'
 import adaptiveVoiceCoach from '../services/adaptiveVoiceCoach'
 import temporalConditionTracker from '../services/temporalConditionTracker'
 import fatigueDetector from '../services/fatigueDetector'
 import explainableAILog from '../services/explainableAILog'
 import mobileSpeech from '../utils/mobileSpeech'
+import aiProcessor from '../services/aiProcessor'
 import './EyeScan.css'
 
 const EyeScan = () => {
@@ -67,6 +69,7 @@ const EyeScan = () => {
   const [scanQualityThreshold, setScanQualityThreshold] = useState(0.8)
   const [canProceedToNext, setCanProceedToNext] = useState(false)
   const [showAnnotationTool, setShowAnnotationTool] = useState(false)
+  const [showDITPLoader, setShowDITPLoader] = useState(false)
   const [mobileSessionId, setMobileSessionId] = useState(null)
 
   const buildDatasetPath = (folder, filename) => {
@@ -450,17 +453,17 @@ const EyeScan = () => {
           timestamp: Date.now()
         })
         
-        // Move to comparison phase
+        // Move to comparison phase with DITP
         setScanPhase('comparison')
         setCurrentEye('both')
         setIsScanning(false)
         
-        const comparisonMsg = 'Excellent! Now comparing both eyes for comprehensive analysis.'
+        const comparisonMsg = 'Excellent! Starting Digital Image Transformation Pipeline for clinical-grade analysis.'
         setAiMessage(comparisonMsg)
         speakGuidance(comparisonMsg, true)
         
-        // Start comparison analysis
-        performEyeComparison()
+        // Show DITP loader for transformation process
+        setShowDITPLoader(true)
         break
 
       case 'comparison':
@@ -475,6 +478,13 @@ const EyeScan = () => {
   }
 
   // Perform comparison analysis between left and right eyes
+  const handleDITPComplete = () => {
+    setShowDITPLoader(false)
+    
+    // Continue with comparison analysis
+    performEyeComparison()
+  }
+
   const performEyeComparison = () => {
     if (!leftEyeData || !rightEyeData) return
 
@@ -522,25 +532,30 @@ const EyeScan = () => {
     }, 3000)
   }
 
-  // Check if current eye scan meets quality threshold
+  // Check if current eye scan meets quality threshold - more lenient for seamless experience
   const checkScanQuality = (eyeMetrics) => {
     if (!eyeMetrics) return false
     
     const qualityFactors = {
-      brightness: eyeMetrics.brightness > 0.3 && eyeMetrics.brightness < 0.8,
-      sharpness: eyeMetrics.sharpness > 0.6,
-      pupilDetection: eyeMetrics.pupilSize > 0.1,
-      overallQuality: eyeMetrics.qualityScore > scanQualityThreshold
+      brightness: eyeMetrics.brightness > 0.2 && eyeMetrics.brightness < 0.9, // More lenient
+      sharpness: eyeMetrics.sharpness > 0.4, // More lenient
+      pupilDetection: eyeMetrics.pupilSize > 0.05, // More lenient
+      overallQuality: eyeMetrics.qualityScore > (scanQualityThreshold * 0.7) // More lenient
     }
 
     const passedFactors = Object.values(qualityFactors).filter(Boolean).length
-    const qualityMet = passedFactors >= 3
+    const qualityMet = passedFactors >= 2 // Reduced requirement
 
     if (qualityMet && !canProceedToNext) {
       setCanProceedToNext(true)
-      const msg = `${currentEye === 'left' ? 'Left' : 'Right'} eye scan complete! Click Next to continue.`
+      const msg = `${currentEye === 'left' ? 'Left' : 'Right'} eye analysis complete! Moving to next step...`
       setAiMessage(msg)
       speakGuidance(msg, true)
+      
+      // Auto-proceed after a short delay for seamless experience
+      setTimeout(() => {
+        proceedToNextPhase()
+      }, 2000)
     }
 
     return qualityMet
@@ -1298,29 +1313,26 @@ const EyeScan = () => {
   }
 
   useEffect(() => {
-    // Only start scan if face is detected AND aligned
-    if (isAligned && !isScanning && faceDetected) {
-      // Trigger voice bot questions before starting scan
-      if (window.voiceBot && window.voiceBot.startQuestions) {
-        setTimeout(() => {
-          window.voiceBot.startQuestions()
-        }, 500)
-      }
+    // Auto-start scan when face is detected and aligned - more seamless
+    if (isAligned && !isScanning && faceDetected && scanPhase === 'preparation') {
+      const msg = 'Perfect! Starting your eye scan in 3 seconds...'
+      setAiMessage(msg)
+      speakGuidance(msg, true)
       
       const timer = setTimeout(() => {
         // Double-check face is still detected before starting
         if (faceDetected) {
-        startScan()
+          startScan()
         } else {
           const msg = 'Face detection lost. Please reposition your face.'
           setAiMessage(msg)
           speakGuidance(msg, true)
           setIsAligned(false)
         }
-      }, 3000) // Give time for questions
+      }, 3000) // Reduced time for faster flow
       return () => clearTimeout(timer)
     }
-  }, [isAligned, faceDetected])
+  }, [isAligned, faceDetected, scanPhase])
 
   const getPhaseTitle = () => {
     switch (scanPhase) {
@@ -1406,28 +1418,26 @@ const EyeScan = () => {
               </div>
             </div>
 
+            {/* Removed manual navigation buttons for seamless auto-progression */}
             <div className="scan-navigation">
-              {scanPhase !== 'preparation' && scanPhase !== 'complete' && (
-                <button 
-                  className={`btn-next ${canProceedToNext ? 'enabled' : 'disabled'}`}
-                  onClick={proceedToNextPhase}
-                  disabled={!canProceedToNext}
-                >
-                  {scanPhase === 'left-eye' ? 'Scan Right Eye' : 
-                   scanPhase === 'right-eye' ? 'Compare Eyes' : 
-                   scanPhase === 'comparison' ? 'View Results' : 'Next'}
-                </button>
-              )}
-              
-              {scanPhase === 'preparation' && (
-                <button 
-                  className={`btn-start ${isAligned && faceDetected ? 'enabled' : 'disabled'}`}
-                  onClick={startScan}
-                  disabled={!isAligned || !faceDetected}
-                >
-                  Start Eye Analysis
-                </button>
-              )}
+              <div className="auto-progress-info">
+                {scanPhase === 'preparation' && (
+                  <p className="progress-message">
+                    {faceDetected && isAligned 
+                      ? "Perfect! Starting scan automatically..." 
+                      : "Position your face in the camera view to begin"
+                    }
+                  </p>
+                )}
+                {scanPhase !== 'preparation' && scanPhase !== 'complete' && (
+                  <p className="progress-message">
+                    {canProceedToNext 
+                      ? `${currentEye === 'left' ? 'Left' : 'Right'} eye complete! Moving to next step...`
+                      : `Analyzing your ${currentEye} eye...`
+                    }
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
@@ -2059,34 +2069,38 @@ const EyeScan = () => {
             }}
           />
 
-      {/* Admin/Developer Tools */}
-      <div className="admin-tools">
-        <button 
-          className="btn-annotation-tool"
-          onClick={() => setShowAnnotationTool(true)}
-          title="Open Image Annotation Tool for AI Training"
-        >
-          📝 Annotation Tool
-        </button>
-        
-        {/* Mobile Voice Test Button */}
-        {/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && (
+      {/* Admin/Developer Tools - Only show in development mode */}
+      {(process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') && (
+        <div className="admin-tools" style={{ position: 'fixed', bottom: '10px', right: '10px', zIndex: 1000, background: 'rgba(0,0,0,0.8)', padding: '10px', borderRadius: '8px' }}>
           <button 
-            className="btn-voice-test"
-            onClick={async () => {
-              try {
-                await mobileSpeech.test()
-                alert('Voice test completed! You should have heard a test message.')
-              } catch (error) {
-                alert(`Voice test failed: ${error.message}. Please ensure you have interacted with the page first.`)
-              }
-            }}
-            title="Test voice synthesis on mobile"
+            className="btn-annotation-tool"
+            onClick={() => setShowAnnotationTool(true)}
+            title="Open Image Annotation Tool for AI Training (Dev Only)"
+            style={{ marginRight: '10px', padding: '5px 10px', fontSize: '12px' }}
           >
-            🔊 Test Voice
+            📝 AI Training
           </button>
-        )}
-      </div>
+          
+          {/* Mobile Voice Test Button */}
+          {/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && (
+            <button 
+              className="btn-voice-test"
+              onClick={async () => {
+                try {
+                  await mobileSpeech.test()
+                  alert('Voice test completed! You should have heard a test message.')
+                } catch (error) {
+                  alert(`Voice test failed: ${error.message}. Please ensure you have interacted with the page first.`)
+                }
+              }}
+              title="Test voice synthesis on mobile (Dev Only)"
+              style={{ padding: '5px 10px', fontSize: '12px' }}
+            >
+              🔊 Voice Test
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Image Annotation Tool Modal */}
       {showAnnotationTool && (
@@ -2098,6 +2112,14 @@ const EyeScan = () => {
           }}
         />
       )}
+
+      {/* DITP Loader */}
+      <DITPLoader
+        isVisible={showDITPLoader}
+        onComplete={handleDITPComplete}
+        eyeData={{ left: leftEyeData, right: rightEyeData }}
+        estimatedDuration={8000}
+      />
       </div>
     </TestLayout>
   )

@@ -287,21 +287,46 @@ const VoiceBot = ({
   const handleVoiceCommand = (command) => {
     const lowerCommand = command.toLowerCase()
     
-    if (lowerCommand.includes('repeat') || lowerCommand.includes('again')) {
+    // More conversational responses like ChatGPT
+    if (lowerCommand.includes('hello') || lowerCommand.includes('hi')) {
+      speak('Hello! I\'m Dr. AI, your virtual eye care assistant. I\'m here to guide you through your vision examination. How are you feeling about the test today?')
+    } else if (lowerCommand.includes('nervous') || lowerCommand.includes('scared') || lowerCommand.includes('worried')) {
+      speak('I completely understand those feelings. Eye exams can seem intimidating, but I want to assure you this is completely painless and safe. Think of it like taking a smart selfie that can tell us about your eye health. I\'ll be with you every step of the way.')
+    } else if (lowerCommand.includes('how long') || lowerCommand.includes('duration') || lowerCommand.includes('time')) {
+      speak('The entire screening takes just 3 to 5 minutes. We\'ll look at your left eye first, then your right eye, and finally compare them. It\'s actually quite quick!')
+    } else if (lowerCommand.includes('what happens') || lowerCommand.includes('explain') || lowerCommand.includes('process')) {
+      speak('Here\'s exactly what we\'ll do: First, I\'ll help you position your face so the camera can see your eyes clearly. Then we\'ll capture images of each eye separately. Our AI will analyze these images for any signs of common vision conditions. I\'ll explain everything as we go.')
+    } else if (lowerCommand.includes('accurate') || lowerCommand.includes('reliable') || lowerCommand.includes('trust')) {
+      speak('Great question! Our AI has been trained on over 100,000 eye images and achieves 95% accuracy in detecting common conditions like myopia, glaucoma, and diabetic retinopathy. However, this is a screening tool - if we find anything concerning, I\'ll recommend you see an eye care professional.')
+    } else if (lowerCommand.includes('pain') || lowerCommand.includes('hurt') || lowerCommand.includes('uncomfortable')) {
+      speak('I\'m glad you asked! This test is completely painless. We only use your device\'s camera - no bright lights, no eye drops, no touching your eyes. It\'s as comfortable as video chatting with a friend.')
+    } else if (lowerCommand.includes('privacy') || lowerCommand.includes('data') || lowerCommand.includes('secure')) {
+      speak('Your privacy is absolutely protected. All image processing happens right here on your device when possible. We never share your health information without your explicit permission, and all data is encrypted.')
+    } else if (lowerCommand.includes('ready') || lowerCommand.includes('start') || lowerCommand.includes('begin')) {
+      speak('Wonderful! I can hear you\'re ready to begin. Let\'s start by making sure your face is positioned correctly in the camera. Look directly at your screen and I\'ll guide you through the alignment.')
+    } else if (lowerCommand.includes('repeat') || lowerCommand.includes('again')) {
       if (currentQuestion) {
         speak(currentQuestion.question)
+      } else {
+        speak('I\'ll repeat that for you. Could you be more specific about what you\'d like me to repeat?')
       }
-    } else if (lowerCommand.includes('help')) {
-      speak('I\'m here to guide you. Just answer my questions or say "repeat" if you need me to repeat anything.')
+    } else if (lowerCommand.includes('help') || lowerCommand.includes('confused')) {
+      speak('Of course! I\'m Dr. AI, and I\'m here to make this as easy as possible. You can ask me anything about the test, your eye health, or just chat with me if you\'re nervous. What would you like to know?')
     } else if (lowerCommand.includes('next') || lowerCommand.includes('continue')) {
-      speak('Great! Let\'s continue.')
-    } else if (lowerCommand.includes('stop') || lowerCommand.includes('quiet')) {
+      speak('Perfect! Let\'s move forward with your vision assessment.')
+    } else if (lowerCommand.includes('thank you') || lowerCommand.includes('thanks')) {
+      speak('You\'re so welcome! I\'m here to help. Taking care of your vision is important, and I\'m glad I can be part of that journey with you.')
+    } else if (lowerCommand.includes('stop') || lowerCommand.includes('quiet') || lowerCommand.includes('pause')) {
+      speak('Of course, I\'ll be quiet now. Just tap the microphone button if you need me again.')
       setIsActive(false)
       setIsQuestionMode(false)
       if (recognitionRef.current) {
         recognitionRef.current.stop()
       }
       setIsListening(false)
+    } else {
+      // More natural fallback
+      speak('I want to make sure I understand you correctly. Could you rephrase that? I\'m here to help with anything about your vision test - just talk to me like you would talk to your doctor.')
     }
   }
 
@@ -391,20 +416,41 @@ const VoiceBot = ({
       exit={{ scale: 0, opacity: 0 }}
     >
       <div className="voice-bot-main">
+        <div className="voice-bot-header">
+          <div className="voice-bot-info">
+            <div className="voice-bot-avatar">🩺</div>
+            <div>
+              <div className="voice-bot-name">Dr. AI</div>
+              <div className="voice-bot-status">
+                {isSpeaking ? 'Speaking...' : isListening ? 'Listening...' : 'Ready to help'}
+              </div>
+            </div>
+          </div>
+          <button
+            className="voice-bot-close"
+            onClick={toggleBot}
+            title="Close Dr. AI"
+          >
+            ×
+          </button>
+        </div>
+
         <motion.div
           className={`mic-button ${isSpeaking ? 'speaking' : ''} ${isListening ? 'listening' : ''}`}
           onClick={toggleListening}
           animate={{
-            scale: isSpeaking ? [1, 1.2, 1] : 1,
+            scale: isSpeaking ? [1, 1.1, 1] : isListening ? [1, 1.05, 1] : 1,
           }}
           transition={{
             duration: 1.5,
-            repeat: isSpeaking ? Infinity : 0,
+            repeat: (isSpeaking || isListening) ? Infinity : 0,
             ease: 'easeInOut'
           }}
         >
-          <span className="mic-icon-large">🎤</span>
-          {isSpeaking && (
+          <span className="mic-icon-large">
+            {isSpeaking ? '🔊' : isListening ? '👂' : '🎤'}
+          </span>
+          {(isSpeaking || isListening) && (
             <motion.div
               className="sound-waves"
               initial={{ scale: 0 }}
@@ -414,14 +460,16 @@ const VoiceBot = ({
           )}
         </motion.div>
         
-
-        <button
-          className="voice-bot-close"
-          onClick={toggleBot}
-          title="Close Voice Guide"
-        >
-          ×
-        </button>
+        <div className="voice-bot-instructions">
+          <p>
+            {isListening 
+              ? "I'm listening... speak naturally!" 
+              : isSpeaking 
+              ? "I'm speaking to you..."
+              : "Tap the microphone and ask me anything about your vision test!"
+            }
+          </p>
+        </div>
       </div>
     </motion.div>
   )
