@@ -625,8 +625,13 @@
     text-align: center;
   }
   
+  /* Content should appear first, then visual below */
+  .hero-content {
+    order: 1;
+  }
+  
   .hero-visual {
-    order: -1;
+    order: 2;
   }
   
   .phone-frame {
@@ -642,6 +647,19 @@
     padding: 4rem 0;
   }
   
+  .hero-container {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  
+  /* Ensure content appears first on mobile */
+  .hero-content {
+    order: 1;
+  }
+  
+  .hero-visual {
+    order: 2;
+  }
   
   .hero-actions {
     flex-direction: column;

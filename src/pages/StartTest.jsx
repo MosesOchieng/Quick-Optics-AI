@@ -11,34 +11,6 @@ const StartTest = () => {
 
   const screens = [
     {
-      title: 'Welcome to Quick Optics AI',
-      subtitle: 'Meet Dr. AI - Your Personal Vision Care Assistant',
-      content: (
-        <div className="welcome-content">
-          <div className="doctor-avatar">
-            <div className="avatar-circle">
-              <span className="doctor-icon">👩‍⚕️</span>
-            </div>
-            <div className="doctor-intro">
-              <h3>Dr. AI</h3>
-              <p>Your Virtual Eye Care Specialist</p>
-            </div>
-          </div>
-          <div className="welcome-message">
-            <p className="greeting">
-              Hello! I'm Dr. AI, and I'll be guiding you through your comprehensive vision assessment today. 
-            </p>
-            <p className="reassurance">
-              Don't worry - this is completely painless and takes just 3-5 minutes. I'll be with you every step of the way, 
-              explaining what we're doing and why. Think of it as having a friendly eye doctor right in your pocket!
-            </p>
-          </div>
-        </div>
-      ),
-      buttonText: 'Nice to meet you, Dr. AI!',
-      onButtonClick: () => setCurrentScreen(1)
-    },
-    {
       title: 'Camera Setup',
       subtitle: 'Let me help you set up your camera for the best results.',
       content: (
@@ -74,7 +46,7 @@ const StartTest = () => {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true })
           stream.getTracks().forEach(track => track.stop())
           setCameraPermission(true)
-          setCurrentScreen(2)
+          setCurrentScreen(1) // Move to next screen (index 1)
         } catch (error) {
           setCameraPermission(false)
           alert('I need camera access to examine your eyes. Please enable it in your browser settings and try again.')
@@ -155,18 +127,20 @@ const StartTest = () => {
             </div>
 
             <div className="screen-content">
-              <h1 className="screen-title">{screens[currentScreen].title}</h1>
-              <p className="screen-subtitle">{screens[currentScreen].subtitle}</p>
-              {screens[currentScreen].content}
+              <h1 className="screen-title">{screens[currentScreen]?.title || 'Vision Test Setup'}</h1>
+              <p className="screen-subtitle">{screens[currentScreen]?.subtitle || 'Preparing your vision test'}</p>
+              {screens[currentScreen]?.content}
             </div>
 
             <div className="screen-footer">
-              <button
-                className="btn btn-primary btn-large"
-                onClick={screens[currentScreen].onButtonClick}
-              >
-                {screens[currentScreen].buttonText}
-              </button>
+              {screens[currentScreen] && (
+                <button
+                  className="btn btn-primary btn-large"
+                  onClick={screens[currentScreen].onButtonClick}
+                >
+                  {screens[currentScreen].buttonText}
+                </button>
+              )}
             </div>
           </motion.div>
         </AnimatePresence>

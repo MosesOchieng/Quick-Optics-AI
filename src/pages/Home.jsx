@@ -19,7 +19,38 @@ const Home = () => {
     } else {
       setIsVisible(true)
     }
-  }, [])
+
+    // Keyboard shortcut: H then Enter to show help
+    let hKeyPressed = false
+    let hKeyTimeout = null
+    
+    const handleKeyDown = (e) => {
+      // Check for H key
+      if ((e.key === 'h' || e.key === 'H') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        hKeyPressed = true
+        // Reset after 2 seconds if Enter not pressed
+        if (hKeyTimeout) clearTimeout(hKeyTimeout)
+        hKeyTimeout = setTimeout(() => {
+          hKeyPressed = false
+        }, 2000)
+      }
+      
+      // Check for Enter after H
+      if (hKeyPressed && e.key === 'Enter' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault()
+        hKeyPressed = false
+        if (hKeyTimeout) clearTimeout(hKeyTimeout)
+        navigate('/faq')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      if (hKeyTimeout) clearTimeout(hKeyTimeout)
+    }
+  }, [navigate])
 
   const handleSplashComplete = () => {
     setShowSplash(false)

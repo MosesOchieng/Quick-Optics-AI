@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import cvie from '../services/CVIE'
@@ -53,6 +53,7 @@ const EyeScan = () => {
   const lastVoicePromptRef = useRef(0)
   const faceDetectionTimeoutRef = useRef(null)
   const [voiceGuidanceEnabled, setVoiceGuidanceEnabled] = useState(true) // Enable by default
+  const faceDetectedRef = useRef(false) // Track face detection state for callbacks
   const [zoomLevel, setZoomLevel] = useState(1) // Zoom level (1 = 100%)
   const [cloudComparison, setCloudComparison] = useState(null)
   const [fatigueAssessment, setFatigueAssessment] = useState(null)
@@ -156,12 +157,83 @@ const EyeScan = () => {
   const [searchingMessage, setSearchingMessage] = useState('AI dataset ready for analysis')
   const [computerVisionData, setComputerVisionData] = useState(null)
 
+  // Define speakGuidance early so it can be used in useEffect
+  const speakGuidance = useCallback(async (message, force = false) => {
+    if (!voiceGuidanceEnabled && !force) return
+    
+    // Increased cooldown to prevent spam - only speak important messages
+    const cooldown = force ? 3000 : 8000 // Much longer cooldown
+    const now = Date.now()
+    if (now - lastVoicePromptRef.current < cooldown && !force) {
+      console.log('Voice guidance skipped (cooldown):', message)
+      return
+    }
+    
+    lastVoicePromptRef.current = now
+    
+    try {
+      // Enhanced mobile speech with better error handling
+      await mobileSpeech.speak(message, {
+        rate: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 0.7 : 0.9,
+        pitch: 1.0,
+        volume: 1.0,
+        preferFemale: true
+      })
+      console.log('Speaking on', /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'mobile' : 'desktop', ':', message)
+    } catch (error) {
+      console.error('Speech synthesis error:', error)
+      
+      // Enhanced fallback for mobile devices
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          // Cancel any existing speech
+          window.speechSynthesis.cancel()
+          
+          const utterance = new SpeechSynthesisUtterance(message)
+          utterance.rate = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 0.7 : 0.9
+          utterance.pitch = 1.0
+          utterance.volume = 1.0
+          utterance.lang = 'en-US'
+          
+          // Mobile-specific handling
+          if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            // Add delay for mobile
+            setTimeout(() => {
+              window.speechSynthesis.speak(utterance)
+            }, 100)
+          } else {
+            window.speechSynthesis.speak(utterance)
+          }
+          
+          console.log('Fallback speech used for:', message)
+        } catch (fallbackError) {
+          console.error('Fallback speech also failed:', fallbackError)
+        }
+      }
+    }
+  }, [voiceGuidanceEnabled])
+
   useEffect(() => {
     startCamera()
     loadHistory()
     // Remove duplicate MediaPipe initialization - let FaceDetector handle it
     explainableAILog.startScan(`scan_${Date.now()}`)
     fatigueDetector.reset()
+    
+    // Start voice guidance immediately when page loads
+    setTimeout(() => {
+      try {
+        const initialMsg = 'Hello! I\'m Dr. AI. Please position your face inside the frame so I can see both of your eyes clearly. I\'ll guide you through the entire process.'
+        setAiMessage(initialMsg)
+        if (speakGuidance) {
+          speakGuidance(initialMsg, true).catch(err => {
+            console.warn('Voice guidance error on page load:', err)
+          })
+        }
+      } catch (error) {
+        console.error('Error starting voice guidance:', error)
+      }
+    }, 1500)
     
     // Scroll camera into view after a short delay
     setTimeout(() => {
@@ -195,7 +267,7 @@ const EyeScan = () => {
         faceDetectionTimeoutRef.current = null
       }
     }
-  }, [])
+  }, [speakGuidance])
 
   // Throttled message updates to prevent excessive re-renders
   useEffect(() => {
@@ -455,7 +527,20 @@ const EyeScan = () => {
       }
       
       setIsAligned(false)
-      setAiMessage('Hello! I\'m Dr. AI. Please position your face inside the frame so I can see both of your eyes clearly.')
+      const welcomeMsg = 'Hello! I\'m Dr. AI. Please position your face inside the frame so I can see both of your eyes clearly.'
+      setAiMessage(welcomeMsg)
+      // Start voice guidance immediately
+      setTimeout(() => {
+        try {
+          if (speakGuidance) {
+            speakGuidance(welcomeMsg, true).catch(err => {
+              console.warn('Voice guidance error in startCamera:', err)
+            })
+          }
+        } catch (error) {
+          console.error('Error in startCamera voice guidance:', error)
+        }
+      }, 1000)
     } catch (error) {
       console.error('Error accessing camera:', error)
       const errorMsg = error.name === 'NotAllowedError' 
@@ -1197,61 +1282,6 @@ const EyeScan = () => {
     speakGuidance('Voice guidance enabled. I will help you stay aligned.', true)
   }
 
-  const speakGuidance = async (message, force = false) => {
-    if (!voiceGuidanceEnabled && !force) return
-    
-    // Increased cooldown to prevent spam - only speak important messages
-    const cooldown = force ? 3000 : 8000 // Much longer cooldown
-    const now = Date.now()
-    if (now - lastVoicePromptRef.current < cooldown && !force) {
-      console.log('Voice guidance skipped (cooldown):', message)
-      return
-    }
-    
-    lastVoicePromptRef.current = now
-    
-    try {
-      // Enhanced mobile speech with better error handling
-      await mobileSpeech.speak(message, {
-        rate: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 0.7 : 0.9,
-        pitch: 1.0,
-        volume: 1.0,
-        preferFemale: true
-      })
-      console.log('Speaking on', /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'mobile' : 'desktop', ':', message)
-    } catch (error) {
-      console.error('Speech synthesis error:', error)
-      
-      // Enhanced fallback for mobile devices
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        try {
-          // Cancel any existing speech
-          window.speechSynthesis.cancel()
-          
-          const utterance = new SpeechSynthesisUtterance(message)
-          utterance.rate = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 0.7 : 0.9
-          utterance.pitch = 1.0
-          utterance.volume = 1.0
-          utterance.lang = 'en-US'
-          
-          // Mobile-specific handling
-          if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-            // Add delay for mobile
-            setTimeout(() => {
-              window.speechSynthesis.speak(utterance)
-            }, 100)
-          } else {
-            window.speechSynthesis.speak(utterance)
-          }
-          
-          console.log('Fallback speech used for:', message)
-        } catch (fallbackError) {
-          console.error('Fallback speech also failed:', fallbackError)
-        }
-      }
-    }
-  }
-
   useEffect(() => {
     // Auto-start scan immediately when face is detected and aligned - instant detection
     if (isAligned && !isScanning && faceDetected && scanPhase === 'preparation') {
@@ -1366,25 +1396,46 @@ const EyeScan = () => {
             <FaceDetector
               videoRef={videoRef}
               onFaceDetected={(metrics) => {
-                console.log('EyeScan: Face detected with metrics:', metrics)
-                setFaceDetected(true)
-                setFaceMetrics(metrics)
-                const msg = 'Great! I can see your face. Please hold still and look straight ahead.'
-                setAiMessage(msg)
-                // Only speak once when first detected
-                speakGuidance(msg, true)
+                try {
+                  console.log('EyeScan: Face detected with metrics:', metrics)
+                  const wasDetected = faceDetectedRef.current
+                  faceDetectedRef.current = true
+                  setFaceDetected(true)
+                  setFaceMetrics(metrics)
+                  // Only speak when face is first detected (not on every frame)
+                  if (!wasDetected && speakGuidance) {
+                    const msg = 'Great! I can see your face. Please hold still and look straight ahead.'
+                    setAiMessage(msg)
+                    speakGuidance(msg, true).catch(err => {
+                      console.warn('Voice guidance error on face detected:', err)
+                    })
+                  }
+                } catch (error) {
+                  console.error('Error in onFaceDetected callback:', error)
+                }
               }}
               onFaceLost={() => {
-                setFaceDetected(false)
-                setIsAligned(false)
-                if (isScanning) {
-                  setIsScanning(false)
-                  setScanProgress(0)
-                  scanProgressRef.current = 0
+                try {
+                  const wasDetected = faceDetectedRef.current
+                  faceDetectedRef.current = false
+                  setFaceDetected(false)
+                  setIsAligned(false)
+                  if (isScanning) {
+                    setIsScanning(false)
+                    setScanProgress(0)
+                    scanProgressRef.current = 0
+                  }
+                  // Only speak when face is lost (not on every frame)
+                  if (wasDetected && speakGuidance) {
+                    const msg = 'Face not detected. Please position your face in the camera view.'
+                    setAiMessage(msg)
+                    speakGuidance(msg, true).catch(err => {
+                      console.warn('Voice guidance error on face lost:', err)
+                    })
+                  }
+                } catch (error) {
+                  console.error('Error in onFaceLost callback:', error)
                 }
-                const msg = 'Face not detected. Please position your face in the camera view.'
-                setAiMessage(msg)
-                speakGuidance(msg, true)
               }}
               onFaceMetrics={(metrics) => {
                 // Update face metrics continuously for adaptive sizing
@@ -1462,9 +1513,18 @@ const EyeScan = () => {
                 if (isRoughlyAligned && !isAligned) {
                   setIsAligned(true)
                   console.log('Face aligned - ready to start scan')
-                  // Don't speak - just proceed silently
+                  // Provide voice feedback when face is detected
+                  const alignmentMsg = 'Perfect! I can see your face clearly now. I\'m ready to begin the eye scan.'
+                  setAiMessage(alignmentMsg)
+                  speakGuidance(alignmentMsg, true)
                 } else if (!isRoughlyAligned && isAligned) {
                   setIsAligned(false)
+                  // Provide feedback when face moves out of alignment
+                  if (faceDetected) {
+                    const realignMsg = 'Please move back into the frame so I can see your face clearly.'
+                    setAiMessage(realignMsg)
+                    speakGuidance(realignMsg, false)
+                  }
                 }
               }}
               showOverlay={true}
@@ -2034,17 +2094,15 @@ const EyeScan = () => {
         />
       )}
 
-          {/* Voice Bot - Hidden during preparation phase to avoid distractions */}
-          {scanPhase !== 'preparation' && (
-            <VoiceBot
-              mode="test"
-              testType="eye-scan"
-              screenContent={{
-                title: 'Eye Scan',
-                description: aiMessage
-              }}
-            />
-          )}
+          {/* Voice Bot - Always active to guide users */}
+          <VoiceBot
+            mode="test"
+            testType="eye-scan"
+            screenContent={{
+              title: 'Eye Scan',
+              description: aiMessage
+            }}
+          />
 
       {/* Admin/Developer Tools - Only show in development mode */}
       {(process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') && (
