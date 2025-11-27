@@ -49,16 +49,31 @@ class CloudConditionScorer {
   /**
    * Get cloud-based condition scoring
    */
-  async scoreConditions(featureVector, onDeviceProbabilities) {
+  async scoreConditions(featureVector, onDeviceProbabilities, userId = null, scanId = null) {
     try {
-      const response = await api.analyzeCVIE({
-        type: 'condition_scoring',
-        features: featureVector,
-        onDevicePredictions: onDeviceProbabilities
+      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/cloud-scoring/score`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          features: featureVector,
+          metadata: {
+            deviceType: navigator.userAgent.includes('Mobile') ? 'mobile' : 'desktop',
+            timestamp: Date.now()
+          },
+          userId,
+          scanId
+        })
       })
       
-      this.lastCloudScore = response
-      return response
+      if (!response.ok) {
+        throw new Error(`Cloud scoring failed: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      this.lastCloudScore = data.result
+      return data.result
     } catch (error) {
       console.warn('Cloud scoring failed, using on-device only:', error)
       return null

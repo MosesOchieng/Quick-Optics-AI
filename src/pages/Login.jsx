@@ -3,28 +3,37 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import api from '../utils/api'
 import Toast from '../components/Toast'
+import FormInput from '../components/FormInput'
+import { useFormValidation } from '../utils/validation'
 import './Auth.css'
 
 const Login = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const [formData, setFormData] = useState({
-    email: location.state?.email || '',
-    password: ''
-  })
-  const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
+  const [serverError, setServerError] = useState('')
+
+  const {
+    formData,
+    errors,
+    touched,
+    handleChange,
+    handleBlur,
+    validateAll
+  } = useFormValidation({
+    email: location.state?.email || '',
+    password: ''
+  })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
+    setServerError('')
     setShowSuccess(false)
 
-    // Basic validation
-    if (!formData.email || !formData.password) {
-      setError('Please fill in all fields')
+    // Validate all fields
+    if (!validateAll()) {
       return
     }
 
@@ -48,7 +57,7 @@ const Login = () => {
       }, 1500)
     } catch (err) {
       const errorMessage = err.message || 'Login failed. Please check your email and password.'
-      setError(errorMessage)
+      setServerError(errorMessage)
       console.error('Login error:', err)
     } finally {
       setLoading(false)
@@ -82,13 +91,13 @@ const Login = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
-            {error && (
+            {serverError && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="error-message"
               >
-                {error}
+                {serverError}
               </motion.div>
             )}
             
@@ -102,36 +111,38 @@ const Login = () => {
               </motion.div>
             )}
 
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="you@example.com"
-                required
-              />
-              <small className="form-hint">Use the email you registered with</small>
-            </div>
+            <FormInput
+              type="email"
+              name="email"
+              label="Email Address"
+              value={formData.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="you@example.com"
+              required
+              error={errors.email}
+              touched={touched.email}
+              hint="Use the email you registered with"
+              showEmailSuggestions
+            />
 
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="••••••••"
-                required
-                minLength={8}
-              />
-            </div>
+            <FormInput
+              type="password"
+              name="password"
+              label="Password"
+              value={formData.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="••••••••"
+              required
+              error={errors.password}
+              touched={touched.password}
+            />
 
             <button
               type="submit"
               className="btn btn-primary btn-full"
-              disabled={loading}
+              disabled={loading || Object.keys(errors).some(key => errors[key])}
             >
               {loading ? 'Signing in...' : 'Login'}
             </button>

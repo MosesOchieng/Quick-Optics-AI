@@ -7,6 +7,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { speakWithElevenLabs } from '../utils/elevenLabs'
+import mobileSpeech from '../utils/mobileSpeech'
 import screenAnalyzer from '../utils/screenAnalyzer'
 import './VoiceBot.css'
 
@@ -112,31 +113,34 @@ const VoiceBot = ({
       }
 
       try {
+        // Try ElevenLabs first, then fallback to enhanced mobile speech
         speakWithElevenLabs(text)
           .then(() => {
             finishSpeaking()
           })
-          .catch((error) => {
-            console.error('Speech error:', error)
-            // Fallback to browser TTS with female voice
-            if ('speechSynthesis' in window) {
-              const utterance = new SpeechSynthesisUtterance(text)
-              utterance.rate = 0.9
-              utterance.pitch = 1.2 // Higher pitch for female voice
-              // Try to use a female voice
-              const voices = window.speechSynthesis.getVoices()
-              const femaleVoice = voices.find(v => 
-                v.name.toLowerCase().includes('female') || 
-                v.name.toLowerCase().includes('zira') ||
-                v.name.toLowerCase().includes('samantha')
-              )
-              if (femaleVoice) utterance.voice = femaleVoice
-              
-              utterance.onend = finishSpeaking
-              utterance.onerror = finishSpeaking
-              window.speechSynthesis.speak(utterance)
-            } else {
+          .catch(async (error) => {
+            console.error('ElevenLabs speech error:', error)
+            // Enhanced mobile-optimized fallback
+            try {
+              await mobileSpeech.speak(text, {
+                rate: 0.9,
+                pitch: 1.2,
+                preferFemale: true
+              })
               finishSpeaking()
+            } catch (mobileError) {
+              console.error('Mobile speech error:', mobileError)
+              // Final fallback to basic browser TTS
+              if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text)
+                utterance.rate = 0.9
+                utterance.pitch = 1.2
+                utterance.onend = finishSpeaking
+                utterance.onerror = finishSpeaking
+                window.speechSynthesis.speak(utterance)
+              } else {
+                finishSpeaking()
+              }
             }
           })
       } catch (error) {

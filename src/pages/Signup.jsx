@@ -3,46 +3,62 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import api from '../utils/api'
 import Toast from '../components/Toast'
+import FormInput from '../components/FormInput'
+import { useFormValidation, validationRules } from '../utils/validation'
 import './Auth.css'
 
 const Signup = () => {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
+  const [loading, setLoading] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
+  const [serverError, setServerError] = useState('')
+
+  // Custom validation rules for signup
+  const signupRules = {
+    ...validationRules,
+    confirmPassword: {
+      required: true,
+      message: 'Please confirm your password'
+    }
+  }
+
+  const {
+    formData,
+    errors,
+    touched,
+    handleChange,
+    handleBlur,
+    validateAll
+  } = useFormValidation({
     name: '',
     email: '',
     password: '',
     confirmPassword: ''
-  })
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [showSuccess, setShowSuccess] = useState(false)
-  const [successMessage, setSuccessMessage] = useState('')
+  }, signupRules)
+
+  // Custom validation for password confirmation
+  const validatePasswordMatch = () => {
+    if (formData.password && formData.confirmPassword && formData.password !== formData.confirmPassword) {
+      return 'Passwords do not match'
+    }
+    return ''
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
+    setServerError('')
     setShowSuccess(false)
 
-    // Validation
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError('Please fill in all fields')
+    // Validate all fields
+    if (!validateAll()) {
       return
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters')
-      return
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address')
+    // Check password confirmation
+    const passwordError = validatePasswordMatch()
+    if (passwordError) {
+      setServerError(passwordError)
       return
     }
 
@@ -66,7 +82,7 @@ const Signup = () => {
       }, 2000)
     } catch (err) {
       const errorMessage = err.message || 'Signup failed. Please try again.'
-      setError(errorMessage)
+      setServerError(errorMessage)
       console.error('Signup error:', err)
     } finally {
       setLoading(false)
@@ -100,65 +116,70 @@ const Signup = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
-            {error && (
+            {serverError && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="error-message"
               >
-                {error}
+                {serverError}
               </motion.div>
             )}
 
-            <div className="form-group">
-              <label htmlFor="name">Full Name</label>
-              <input
-                type="text"
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="John Doe"
-                required
-              />
-            </div>
+            <FormInput
+              type="text"
+              name="name"
+              label="Full Name"
+              value={formData.name}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="John Doe"
+              required
+              error={errors.name}
+              touched={touched.name}
+            />
 
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <input
-                type="email"
-                id="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="you@example.com"
-                required
-              />
-            </div>
+            <FormInput
+              type="email"
+              name="email"
+              label="Email Address"
+              value={formData.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="you@example.com"
+              required
+              error={errors.email}
+              touched={touched.email}
+              showEmailSuggestions
+            />
 
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <input
-                type="password"
-                id="password"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                placeholder="••••••••"
-                required
-                minLength={8}
-              />
-              <small className="form-hint">At least 8 characters</small>
-            </div>
+            <FormInput
+              type="password"
+              name="password"
+              label="Password"
+              value={formData.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="••••••••"
+              required
+              error={errors.password}
+              touched={touched.password}
+              showPasswordStrength
+            />
 
-            <div className="form-group">
-              <label htmlFor="confirmPassword">Confirm Password</label>
-              <input
-                type="password"
-                id="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                placeholder="••••••••"
-                required
-              />
-            </div>
+            <FormInput
+              type="password"
+              name="confirmPassword"
+              label="Confirm Password"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="••••••••"
+              required
+              error={errors.confirmPassword || (touched.confirmPassword && validatePasswordMatch())}
+              touched={touched.confirmPassword}
+              hint="Re-enter your password to confirm"
+            />
 
             <div className="form-options">
               <label className="checkbox-label">
@@ -170,7 +191,7 @@ const Signup = () => {
             <button
               type="submit"
               className="btn btn-primary btn-full"
-              disabled={loading}
+              disabled={loading || Object.keys(errors).some(key => errors[key]) || validatePasswordMatch()}
             >
               {loading ? 'Creating account...' : 'Create Account'}
             </button>

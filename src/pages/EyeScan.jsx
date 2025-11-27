@@ -6,11 +6,13 @@ import AIFeedback from '../components/AIFeedback'
 import CVIEIndicator from '../components/CVIEIndicator'
 import VoiceBot from '../components/VoiceBot'
 import ARCalibrationVisualizer from '../components/ARCalibrationVisualizer'
+import ImageAnnotationTool from '../components/ImageAnnotationTool'
 import cloudConditionScorer from '../services/cloudConditionScorer'
 import adaptiveVoiceCoach from '../services/adaptiveVoiceCoach'
 import temporalConditionTracker from '../services/temporalConditionTracker'
 import fatigueDetector from '../services/fatigueDetector'
 import explainableAILog from '../services/explainableAILog'
+import mobileSpeech from '../utils/mobileSpeech'
 import './EyeScan.css'
 
 const EyeScan = () => {
@@ -50,6 +52,20 @@ const EyeScan = () => {
   const [currentLandmarks, setCurrentLandmarks] = useState(null)
   const [showARCalibration, setShowARCalibration] = useState(false)
   const [lightingRecommendations, setLightingRecommendations] = useState([])
+  
+  // Enhanced separate eye scanning states
+  const [currentEye, setCurrentEye] = useState('both') // 'both', 'left', 'right'
+  const [scanPhase, setScanPhase] = useState('preparation') // 'preparation', 'left-eye', 'right-eye', 'comparison', 'complete'
+  const [leftEyeData, setLeftEyeData] = useState(null)
+  const [rightEyeData, setRightEyeData] = useState(null)
+  const [eyeSpecificMetrics, setEyeSpecificMetrics] = useState({
+    left: { pupilSize: 0, brightness: 0, sharpness: 0, alignment: 0 },
+    right: { pupilSize: 0, brightness: 0, sharpness: 0, alignment: 0 }
+  })
+  const [scanQualityThreshold, setScanQualityThreshold] = useState(0.8)
+  const [canProceedToNext, setCanProceedToNext] = useState(false)
+  const [showAnnotationTool, setShowAnnotationTool] = useState(false)
+  const [mobileSessionId, setMobileSessionId] = useState(null)
 
   const buildDatasetPath = (folder, filename) => {
     return encodeURI(`/Original Dataset/${folder}/${filename}`)
@@ -243,9 +259,22 @@ const EyeScan = () => {
     topBrightness = topBrightness / (pixelCount / 2) / 255
     bottomBrightness = bottomBrightness / (pixelCount / 2) / 255
 
-    // Detect eye region (simplified - center region analysis)
+    // Enhanced separate eye analysis
     const centerX = Math.floor(canvas.width / 2)
     const centerY = Math.floor(canvas.height / 2)
+    
+    // Analyze left eye region
+    const leftEyeMetrics = analyzeEyeRegion(data, width, height, centerX * 0.5, centerY)
+    // Analyze right eye region  
+    const rightEyeMetrics = analyzeEyeRegion(data, width, height, centerX * 1.5, centerY)
+    
+    // Update eye-specific metrics
+    setEyeSpecificMetrics(prev => ({
+      left: leftEyeMetrics,
+      right: rightEyeMetrics
+    }))
+    
+    // General eye region analysis (center)
     const regionSize = Math.min(canvas.width, canvas.height) * 0.3
     const regionData = ctx.getImageData(
       centerX - regionSize / 2,
@@ -277,7 +306,86 @@ const EyeScan = () => {
         topBrightness,
         bottomBrightness
       },
+      leftEye: leftEyeMetrics,
+      rightEye: rightEyeMetrics,
       timestamp: Date.now()
+    }
+  }
+
+  // Enhanced eye-specific analysis function
+  const analyzeEyeRegion = (imageData, width, height, eyeCenterX, eyeCenterY) => {
+    const regionSize = Math.min(width, height) * 0.15 // Smaller region for individual eyes
+    const startX = Math.max(0, Math.floor(eyeCenterX - regionSize))
+    const endX = Math.min(width, Math.floor(eyeCenterX + regionSize))
+    const startY = Math.max(0, Math.floor(eyeCenterY - regionSize * 0.7))
+    const endY = Math.min(height, Math.floor(eyeCenterY + regionSize * 0.7))
+    
+    let brightness = 0
+    let sharpness = 0
+    let pupilPixels = 0
+    let irisPixels = 0
+    let totalPixels = 0
+    let redChannel = 0
+    let greenChannel = 0
+    let blueChannel = 0
+    
+    // Analyze the specific eye region
+    for (let y = startY; y < endY; y++) {
+      for (let x = startX; x < endX; x++) {
+        const idx = (y * width + x) * 4
+        const r = imageData[idx]
+        const g = imageData[idx + 1]
+        const b = imageData[idx + 2]
+        const pixelBrightness = (r + g + b) / 3
+        
+        brightness += pixelBrightness
+        redChannel += r
+        greenChannel += g
+        blueChannel += b
+        totalPixels++
+        
+        // Detect pupil (very dark regions)
+        if (pixelBrightness < 40) {
+          pupilPixels++
+        } else if (pixelBrightness < 100) {
+          // Detect iris (medium dark regions)
+          irisPixels++
+        }
+        
+        // Calculate local sharpness
+        if (x < endX - 1 && y < endY - 1) {
+          const rightIdx = (y * width + (x + 1)) * 4
+          const bottomIdx = ((y + 1) * width + x) * 4
+          
+          if (rightIdx < imageData.length && bottomIdx < imageData.length) {
+            const rightBrightness = (imageData[rightIdx] + imageData[rightIdx + 1] + imageData[rightIdx + 2]) / 3
+            const bottomBrightness = (imageData[bottomIdx] + imageData[bottomIdx + 1] + imageData[bottomIdx + 2]) / 3
+            
+            sharpness += Math.abs(pixelBrightness - rightBrightness) + Math.abs(pixelBrightness - bottomBrightness)
+          }
+        }
+      }
+    }
+    
+    const avgBrightness = totalPixels > 0 ? (brightness / totalPixels) / 255 : 0
+    const avgSharpness = totalPixels > 0 ? Math.min(sharpness / totalPixels / 100, 1) : 0
+    const pupilSize = totalPixels > 0 ? pupilPixels / totalPixels : 0
+    const irisSize = totalPixels > 0 ? irisPixels / totalPixels : 0
+    const avgRed = totalPixels > 0 ? redChannel / totalPixels : 0
+    const avgGreen = totalPixels > 0 ? greenChannel / totalPixels : 0
+    const avgBlue = totalPixels > 0 ? blueChannel / totalPixels : 0
+    
+    // Calculate quality score based on multiple factors
+    const qualityScore = (avgSharpness * 0.4) + (avgBrightness * 0.3) + ((pupilSize + irisSize) * 0.3)
+    
+    return {
+      brightness: avgBrightness,
+      sharpness: avgSharpness,
+      pupilSize,
+      irisSize,
+      qualityScore: Math.min(qualityScore, 1),
+      colorBalance: { r: avgRed, g: avgGreen, b: avgBlue },
+      regionPixels: totalPixels
     }
   }
 
@@ -303,6 +411,137 @@ const EyeScan = () => {
       const tracks = stream.getTracks()
       tracks.forEach(track => track.stop())
     }
+  }
+
+  // Handle progression through different eye scanning phases
+  const proceedToNextPhase = () => {
+    if (!canProceedToNext) return
+
+    switch (scanPhase) {
+      case 'left-eye':
+        // Save left eye data
+        setLeftEyeData({
+          metrics: eyeSpecificMetrics.left,
+          capturedFrames: [...capturedFrames],
+          timestamp: Date.now()
+        })
+        
+        // Move to right eye
+        setScanPhase('right-eye')
+        setCurrentEye('right')
+        setIsScanning(false)
+        setScanProgress(0)
+        scanProgressRef.current = 0
+        setCapturedFrames([])
+        setCanProceedToNext(false)
+        
+        const rightEyeMsg = 'Great! Now we\'ll analyze your right eye. Look straight ahead and keep your right eye open.'
+        setAiMessage(rightEyeMsg)
+        speakGuidance(rightEyeMsg, true)
+        break
+
+      case 'right-eye':
+        // Save right eye data
+        setRightEyeData({
+          metrics: eyeSpecificMetrics.right,
+          capturedFrames: [...capturedFrames],
+          timestamp: Date.now()
+        })
+        
+        // Move to comparison phase
+        setScanPhase('comparison')
+        setCurrentEye('both')
+        setIsScanning(false)
+        
+        const comparisonMsg = 'Excellent! Now comparing both eyes for comprehensive analysis.'
+        setAiMessage(comparisonMsg)
+        speakGuidance(comparisonMsg, true)
+        
+        // Start comparison analysis
+        performEyeComparison()
+        break
+
+      case 'comparison':
+        // Complete the scan
+        setScanPhase('complete')
+        finalizeScan()
+        break
+
+      default:
+        break
+    }
+  }
+
+  // Perform comparison analysis between left and right eyes
+  const performEyeComparison = () => {
+    if (!leftEyeData || !rightEyeData) return
+
+    const comparison = {
+      brightnessSymmetry: Math.abs(leftEyeData.metrics.brightness - rightEyeData.metrics.brightness),
+      sharpnessSymmetry: Math.abs(leftEyeData.metrics.sharpness - rightEyeData.metrics.sharpness),
+      pupilSizeSymmetry: Math.abs(leftEyeData.metrics.pupilSize - rightEyeData.metrics.pupilSize),
+      qualityDifference: Math.abs(leftEyeData.metrics.qualityScore - rightEyeData.metrics.qualityScore),
+      overallSymmetry: 0
+    }
+
+    // Calculate overall symmetry score
+    comparison.overallSymmetry = 1 - (
+      (comparison.brightnessSymmetry * 0.3) +
+      (comparison.sharpnessSymmetry * 0.3) +
+      (comparison.pupilSizeSymmetry * 0.2) +
+      (comparison.qualityDifference * 0.2)
+    )
+
+    // Generate insights based on comparison
+    const insights = []
+    if (comparison.brightnessSymmetry > 0.2) {
+      insights.push('Significant brightness difference detected between eyes')
+    }
+    if (comparison.pupilSizeSymmetry > 0.3) {
+      insights.push('Pupil size asymmetry observed - may indicate neurological factors')
+    }
+    if (comparison.overallSymmetry > 0.8) {
+      insights.push('Excellent eye symmetry detected')
+    } else if (comparison.overallSymmetry < 0.5) {
+      insights.push('Notable asymmetry detected - recommend professional evaluation')
+    }
+
+    // Update state with comparison results
+    setHistoryComparison({
+      ...comparison,
+      insights,
+      leftEyeQuality: leftEyeData.metrics.qualityScore,
+      rightEyeQuality: rightEyeData.metrics.qualityScore,
+      timestamp: Date.now()
+    })
+
+    setTimeout(() => {
+      setCanProceedToNext(true)
+    }, 3000)
+  }
+
+  // Check if current eye scan meets quality threshold
+  const checkScanQuality = (eyeMetrics) => {
+    if (!eyeMetrics) return false
+    
+    const qualityFactors = {
+      brightness: eyeMetrics.brightness > 0.3 && eyeMetrics.brightness < 0.8,
+      sharpness: eyeMetrics.sharpness > 0.6,
+      pupilDetection: eyeMetrics.pupilSize > 0.1,
+      overallQuality: eyeMetrics.qualityScore > scanQualityThreshold
+    }
+
+    const passedFactors = Object.values(qualityFactors).filter(Boolean).length
+    const qualityMet = passedFactors >= 3
+
+    if (qualityMet && !canProceedToNext) {
+      setCanProceedToNext(true)
+      const msg = `${currentEye === 'left' ? 'Left' : 'Right'} eye scan complete! Click Next to continue.`
+      setAiMessage(msg)
+      speakGuidance(msg, true)
+    }
+
+    return qualityMet
   }
 
   const generateFaceMetrics = () => {
@@ -337,14 +576,23 @@ const EyeScan = () => {
       speakGuidance(msg, true)
       return
     }
+
+    // Initialize scanning based on current phase
+    if (scanPhase === 'preparation') {
+      setScanPhase('left-eye')
+      setCurrentEye('left')
+      setAiMessage('Starting left eye analysis. Look straight ahead and keep your left eye open.')
+      speakGuidance('Starting left eye analysis. Look straight ahead and keep your left eye open.', true)
+    }
+
     setIsScanning(true)
     setScanProgress(0)
     scanProgressRef.current = 0
     setCapturedFrames([])
-    setAiMessage('Scanning your eyes...')
     setAnalysisPhase('Initializing')
     blinkHistoryRef.current = []
     setBlinkStats({ count: 0, rate: 0 })
+    setCanProceedToNext(false)
 
     // Collect scan data for AI analysis
     const collectScanData = () => {
@@ -480,6 +728,13 @@ const EyeScan = () => {
             const fatigue = fatigueDetector.getFatigueAssessment()
             if (fatigue) {
               setFatigueAssessment(fatigue)
+            }
+
+            // Check scan quality for current eye
+            if (currentEye === 'left' && cvData.leftEye) {
+              checkScanQuality(cvData.leftEye)
+            } else if (currentEye === 'right' && cvData.rightEye) {
+              checkScanQuality(cvData.rightEye)
             }
           }
 
@@ -988,38 +1243,55 @@ const EyeScan = () => {
     speakGuidance('Voice guidance enabled. I will help you stay aligned.', true)
   }
 
-  const speakGuidance = (message, force = false) => {
+  const speakGuidance = async (message, force = false) => {
     if (!voiceGuidanceEnabled && !force) return
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      console.warn('Speech synthesis not available')
-      return
-    }
     
     // Reduce cooldown for critical messages
-    const cooldown = force ? 2000 : 5000
+    const cooldown = force ? 1500 : 4000
     const now = Date.now()
     if (now - lastVoicePromptRef.current < cooldown && !force) return
     
     lastVoicePromptRef.current = now
     
     try {
-      const utterance = new SpeechSynthesisUtterance(message)
-      utterance.lang = 'en-US'
-      utterance.rate = 0.9 // Slightly slower for clarity
-      utterance.pitch = 1.0
-      utterance.volume = 1.0
-      
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel()
-      
-      // Small delay to ensure cancel takes effect
-      setTimeout(() => {
-        window.speechSynthesis.speak(utterance)
-    }, 100)
-      
-      console.log('Speaking:', message)
+      // Enhanced mobile speech with better error handling
+      await mobileSpeech.speak(message, {
+        rate: /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 0.7 : 0.9,
+        pitch: 1.0,
+        volume: 1.0,
+        preferFemale: true
+      })
+      console.log('Speaking on', /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'mobile' : 'desktop', ':', message)
     } catch (error) {
       console.error('Speech synthesis error:', error)
+      
+      // Enhanced fallback for mobile devices
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        try {
+          // Cancel any existing speech
+          window.speechSynthesis.cancel()
+          
+          const utterance = new SpeechSynthesisUtterance(message)
+          utterance.rate = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 0.7 : 0.9
+          utterance.pitch = 1.0
+          utterance.volume = 1.0
+          utterance.lang = 'en-US'
+          
+          // Mobile-specific handling
+          if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            // Add delay for mobile
+            setTimeout(() => {
+              window.speechSynthesis.speak(utterance)
+            }, 100)
+          } else {
+            window.speechSynthesis.speak(utterance)
+          }
+          
+          console.log('Fallback speech used for:', message)
+        } catch (fallbackError) {
+          console.error('Fallback speech also failed:', fallbackError)
+        }
+      }
     }
   }
 
@@ -1053,6 +1325,73 @@ const EyeScan = () => {
       <div className="scan-container">
         {/* Side-by-side layout: Camera on left, Dataset comparison on right */}
         <div className="scan-layout">
+          {/* Separate Eye Scanning Controls */}
+          <div className="eye-scan-controls">
+            <div className="scan-phase-indicator">
+              <div className="phase-steps">
+                <div className={`phase-step ${scanPhase === 'preparation' ? 'active' : scanPhase !== 'preparation' ? 'completed' : ''}`}>
+                  <span className="step-number">1</span>
+                  <span className="step-label">Preparation</span>
+                </div>
+                <div className={`phase-step ${scanPhase === 'left-eye' ? 'active' : ['right-eye', 'comparison', 'complete'].includes(scanPhase) ? 'completed' : ''}`}>
+                  <span className="step-number">2</span>
+                  <span className="step-label">Left Eye</span>
+                </div>
+                <div className={`phase-step ${scanPhase === 'right-eye' ? 'active' : ['comparison', 'complete'].includes(scanPhase) ? 'completed' : ''}`}>
+                  <span className="step-number">3</span>
+                  <span className="step-label">Right Eye</span>
+                </div>
+                <div className={`phase-step ${scanPhase === 'comparison' ? 'active' : scanPhase === 'complete' ? 'completed' : ''}`}>
+                  <span className="step-number">4</span>
+                  <span className="step-label">Comparison</span>
+                </div>
+                <div className={`phase-step ${scanPhase === 'complete' ? 'active' : ''}`}>
+                  <span className="step-number">5</span>
+                  <span className="step-label">Results</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="current-eye-indicator">
+              <div className="eye-focus-display">
+                <div className={`eye-indicator left ${currentEye === 'left' || currentEye === 'both' ? 'active' : ''}`}>
+                  <div className="eye-icon">👁️</div>
+                  <span>Left Eye</span>
+                  {leftEyeData && <div className="eye-status completed">✓</div>}
+                </div>
+                <div className={`eye-indicator right ${currentEye === 'right' || currentEye === 'both' ? 'active' : ''}`}>
+                  <div className="eye-icon">👁️</div>
+                  <span>Right Eye</span>
+                  {rightEyeData && <div className="eye-status completed">✓</div>}
+                </div>
+              </div>
+            </div>
+
+            <div className="scan-navigation">
+              {scanPhase !== 'preparation' && scanPhase !== 'complete' && (
+                <button 
+                  className={`btn-next ${canProceedToNext ? 'enabled' : 'disabled'}`}
+                  onClick={proceedToNextPhase}
+                  disabled={!canProceedToNext}
+                >
+                  {scanPhase === 'left-eye' ? 'Scan Right Eye' : 
+                   scanPhase === 'right-eye' ? 'Compare Eyes' : 
+                   scanPhase === 'comparison' ? 'View Results' : 'Next'}
+                </button>
+              )}
+              
+              {scanPhase === 'preparation' && (
+                <button 
+                  className={`btn-start ${isAligned && faceDetected ? 'enabled' : 'disabled'}`}
+                  onClick={startScan}
+                  disabled={!isAligned || !faceDetected}
+                >
+                  Start Eye Analysis
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Left side: Camera view */}
         <div className="camera-view">
           {/* Zoom controls */}
@@ -1521,6 +1860,87 @@ const EyeScan = () => {
             </div>
           </div>
         )}
+
+        {/* Per-Eye Results Comparison */}
+        {(leftEyeData || rightEyeData) && scanPhase === 'comparison' && (
+          <div className="eye-metrics-comparison">
+            {leftEyeData && (
+              <div className="eye-metric-card">
+                <h4>👁️ Left Eye Analysis</h4>
+                <div className="metric-grid">
+                  <div className="metric-item">
+                    <span>Brightness:</span>
+                    <span className="metric-value">{Math.round(leftEyeData.metrics.brightness * 100)}%</span>
+                  </div>
+                  <div className="metric-item">
+                    <span>Sharpness:</span>
+                    <span className="metric-value">{Math.round(leftEyeData.metrics.sharpness * 100)}%</span>
+                  </div>
+                  <div className="metric-item">
+                    <span>Pupil Size:</span>
+                    <span className="metric-value">{Math.round(leftEyeData.metrics.pupilSize * 100)}%</span>
+                  </div>
+                  <div className="metric-item">
+                    <span>Quality Score:</span>
+                    <span className="metric-value">{Math.round(leftEyeData.metrics.qualityScore * 100)}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {rightEyeData && (
+              <div className="eye-metric-card">
+                <h4>👁️ Right Eye Analysis</h4>
+                <div className="metric-grid">
+                  <div className="metric-item">
+                    <span>Brightness:</span>
+                    <span className="metric-value">{Math.round(rightEyeData.metrics.brightness * 100)}%</span>
+                  </div>
+                  <div className="metric-item">
+                    <span>Sharpness:</span>
+                    <span className="metric-value">{Math.round(rightEyeData.metrics.sharpness * 100)}%</span>
+                  </div>
+                  <div className="metric-item">
+                    <span>Pupil Size:</span>
+                    <span className="metric-value">{Math.round(rightEyeData.metrics.pupilSize * 100)}%</span>
+                  </div>
+                  <div className="metric-item">
+                    <span>Quality Score:</span>
+                    <span className="metric-value">{Math.round(rightEyeData.metrics.qualityScore * 100)}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Eye Symmetry Analysis */}
+        {historyComparison && historyComparison.insights && scanPhase === 'comparison' && (
+          <div className="symmetry-analysis">
+            <h4>👁️👁️ Eye Symmetry Analysis</h4>
+            <div className="symmetry-metrics">
+              <div className="symmetry-item">
+                <span>Overall Symmetry:</span>
+                <span className="metric-value">{Math.round(historyComparison.overallSymmetry * 100)}%</span>
+              </div>
+              <div className="symmetry-item">
+                <span>Brightness Balance:</span>
+                <span className="metric-value">{Math.round((1 - historyComparison.brightnessSymmetry) * 100)}%</span>
+              </div>
+              <div className="symmetry-item">
+                <span>Pupil Symmetry:</span>
+                <span className="metric-value">{Math.round((1 - historyComparison.pupilSizeSymmetry) * 100)}%</span>
+              </div>
+            </div>
+            <div className="symmetry-insights">
+              {historyComparison.insights.map((insight, index) => (
+                <div key={index} className="insight-item">
+                  {insight}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* CVIE Indicator (confidence based on computer-vision features) */}
@@ -1551,6 +1971,46 @@ const EyeScan = () => {
               description: aiMessage
             }}
           />
+
+      {/* Admin/Developer Tools */}
+      <div className="admin-tools">
+        <button 
+          className="btn-annotation-tool"
+          onClick={() => setShowAnnotationTool(true)}
+          title="Open Image Annotation Tool for AI Training"
+        >
+          📝 Annotation Tool
+        </button>
+        
+        {/* Mobile Voice Test Button */}
+        {/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) && (
+          <button 
+            className="btn-voice-test"
+            onClick={async () => {
+              try {
+                await mobileSpeech.test()
+                alert('Voice test completed! You should have heard a test message.')
+              } catch (error) {
+                alert(`Voice test failed: ${error.message}. Please ensure you have interacted with the page first.`)
+              }
+            }}
+            title="Test voice synthesis on mobile"
+          >
+            🔊 Test Voice
+          </button>
+        )}
+      </div>
+
+      {/* Image Annotation Tool Modal */}
+      {showAnnotationTool && (
+        <ImageAnnotationTool
+          onClose={() => setShowAnnotationTool(false)}
+          onSave={(annotations) => {
+            console.log('Annotations saved:', annotations)
+            setShowAnnotationTool(false)
+          }}
+        />
+      )}
     </div>
   )
 }

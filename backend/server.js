@@ -11,6 +11,13 @@ const { v4: uuidv4 } = require('uuid')
 const db = require('./db')
 require('dotenv').config()
 
+// Import route modules
+const cvieRoutes = require('./routes/cvie')
+const testRoutes = require('./routes/tests')
+const gameRoutes = require('./routes/games')
+const annotationRoutes = require('./routes/annotations')
+const cloudScoringRoutes = require('./routes/cloudScoring')
+
 const app = express()
 const PORT = process.env.PORT || 5000
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_production'
@@ -18,6 +25,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_in_production'
 // Middleware
 app.use(cors())
 app.use(express.json())
+
+// Mount route modules
+app.use('/api/cvie', cvieRoutes)
+app.use('/api/tests', testRoutes)
+app.use('/api/games', gameRoutes)
+app.use('/api/annotations', annotationRoutes)
+app.use('/api/cloud-scoring', cloudScoringRoutes)
 
 // In-memory verification codes (email verification only)
 const verificationCodes = new Map()
@@ -448,28 +462,7 @@ app.post('/api/auth/login-otp', (req, res) => {
   }
 })
 
-// CVIE Analysis Routes
-app.post('/api/cvie/analyze', authenticateToken, (req, res) => {
-  try {
-    // TODO: Implement actual CVIE analysis
-    const analysis = {
-      id: uuidv4(),
-      userId: req.user.userId,
-      ...req.body,
-      analysis: {
-        focusIndex: 82,
-        lightSensitivity: 75,
-        stabilityScore: 88,
-        confidence: 'High'
-      },
-      timestamp: new Date().toISOString()
-    }
-    res.json({ analysis })
-  } catch (error) {
-    console.error('CVIE analysis error:', error)
-    res.status(500).json({ message: 'Server error' })
-  }
-})
+// CVIE routes are now handled by separate route modules
 
 // Current user (session) route
 app.get('/api/auth/me', authenticateToken, (req, res) => {
@@ -485,9 +478,152 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   }
 })
 
+// Mobile session tracking
+app.post('/api/mobile/session', (req, res) => {
+  try {
+    const {
+      userId,
+      deviceInfo,
+      speechSupported
+    } = req.body
+
+    const sessionId = uuidv4()
+    const timestamp = new Date().toISOString()
+    const userAgent = req.headers['user-agent'] || ''
+
+    db.prepare(`
+      INSERT INTO mobile_sessions (
+        id, userId, deviceInfo, userAgent, speechSupported, 
+        lastActivity, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      sessionId,
+      userId || null,
+      JSON.stringify(deviceInfo || {}),
+      userAgent,
+      speechSupported ? 1 : 0,
+      timestamp,
+      timestamp
+    )
+
+    res.json({
+      success: true,
+      sessionId,
+      message: 'Mobile session created'
+    })
+  } catch (error) {
+    console.error('Mobile session error:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// Update mobile session activity
+app.put('/api/mobile/session/:sessionId', (req, res) => {
+  try {
+    const { sessionId } = req.params
+    const { speechSupported, lastError } = req.body
+    const timestamp = new Date().toISOString()
+
+    const updates = ['lastActivity = ?']
+    const params = [timestamp]
+
+    if (typeof speechSupported === 'boolean') {
+      updates.push('speechSupported = ?')
+      params.push(speechSupported ? 1 : 0)
+    }
+
+    params.push(sessionId)
+
+    const result = db.prepare(`
+      UPDATE mobile_sessions 
+      SET ${updates.join(', ')} 
+      WHERE id = ?
+    `).run(...params)
+
+    if (result.changes === 0) {
+      return res.status(404).json({ message: 'Session not found' })
+    }
+
+    res.json({
+      success: true,
+      message: 'Session updated'
+    })
+  } catch (error) {
+    console.error('Update mobile session error:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
+// Get mobile session analytics
+app.get('/api/mobile/analytics', (req, res) => {
+  try {
+    const stats = {}
+
+    // Total sessions
+    const totalSessions = db.prepare(
+      'SELECT COUNT(*) as count FROM mobile_sessions'
+    ).get()
+    stats.totalSessions = totalSessions.count
+
+    // Speech support stats
+    const speechStats = db.prepare(`
+      SELECT 
+        speechSupported,
+        COUNT(*) as count
+      FROM mobile_sessions 
+      GROUP BY speechSupported
+    `).all()
+
+    stats.speechSupport = {
+      supported: 0,
+      notSupported: 0
+    }
+
+    speechStats.forEach(stat => {
+      if (stat.speechSupported === 1) {
+        stats.speechSupport.supported = stat.count
+      } else {
+        stats.speechSupport.notSupported = stat.count
+      }
+    })
+
+    // Device type distribution (simplified)
+    const deviceStats = db.prepare(`
+      SELECT 
+        CASE 
+          WHEN userAgent LIKE '%iPhone%' OR userAgent LIKE '%iPad%' THEN 'iOS'
+          WHEN userAgent LIKE '%Android%' THEN 'Android'
+          ELSE 'Other'
+        END as deviceType,
+        COUNT(*) as count
+      FROM mobile_sessions 
+      GROUP BY deviceType
+    `).all()
+
+    stats.deviceTypes = {}
+    deviceStats.forEach(stat => {
+      stats.deviceTypes[stat.deviceType] = stat.count
+    })
+
+    res.json({ stats })
+  } catch (error) {
+    console.error('Mobile analytics error:', error)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    features: {
+      annotations: true,
+      cloudScoring: true,
+      mobileSupport: true,
+      speechTracking: true
+    }
+  })
 })
 
 app.listen(PORT, () => {
