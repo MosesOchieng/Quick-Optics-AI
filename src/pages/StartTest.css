@@ -162,13 +162,35 @@
   font-size: 1.125rem;
 }
 
-@media (max-width: 640px) {
+/* Enhanced Mobile Responsive Styles */
+@media (max-width: 768px) {
   .start-test {
-    padding: 1rem;
+    padding: 1rem 0.5rem;
+    min-height: 100vh;
+  }
+
+  .onboarding-modal {
+    max-width: none;
+    border-radius: 1rem;
+    margin: 0;
+    box-shadow: var(--shadow-lg);
   }
 
   .onboarding-screen {
-    min-height: 500px;
+    min-height: 85vh;
+  }
+
+  .screen-header {
+    padding: 1.25rem;
+  }
+
+  .back-button {
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .progress-bar {
+    height: 3px;
   }
 
   .screen-content {
@@ -176,11 +198,276 @@
   }
 
   .screen-title {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
   }
 
   .screen-subtitle {
     font-size: 1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+  }
+
+  .welcome-icon,
+  .camera-icon {
+    font-size: 4rem;
+  }
+
+  .welcome-text,
+  .permission-text {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    max-width: 350px;
+  }
+
+  .alignment-preview {
+    max-width: 250px;
+  }
+
+  .alignment-frame {
+    border-width: 2px;
+  }
+
+  .alignment-guide {
+    border-width: 1.5px;
+  }
+
+  .align-instruction {
+    font-size: 0.95rem;
+    max-width: 350px;
+  }
+
+  .screen-footer {
+    padding: 1.5rem;
+  }
+
+  .btn-large {
+    padding: 1rem;
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .start-test {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .onboarding-modal {
+    border-radius: 0.75rem;
+  }
+
+  .onboarding-screen {
+    min-height: 80vh;
+  }
+
+  .screen-header {
+    padding: 1rem;
+  }
+
+  .back-button {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .screen-content {
+    padding: 1.5rem 1rem;
+  }
+
+  .screen-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .screen-subtitle {
+    font-size: 0.95rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .welcome-content,
+  .camera-permission-content,
+  .align-content {
+    gap: 1.25rem;
+  }
+
+  .welcome-icon,
+  .camera-icon {
+    font-size: 3.5rem;
+  }
+
+  .welcome-text,
+  .permission-text {
+    font-size: 0.9rem;
+    max-width: 300px;
+  }
+
+  .alignment-preview {
+    max-width: 200px;
+    aspect-ratio: 3/4;
+  }
+
+  .align-instruction {
+    font-size: 0.9rem;
+    max-width: 300px;
+  }
+
+  .screen-footer {
+    padding: 1.25rem;
+  }
+
+  .btn-large {
+    padding: 0.875rem;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .start-test {
+    padding: 0.25rem;
+  }
+
+  .onboarding-screen {
+    min-height: 75vh;
+  }
+
+  .screen-header {
+    padding: 0.75rem;
+  }
+
+  .screen-content {
+    padding: 1.25rem 0.75rem;
+  }
+
+  .screen-title {
+    font-size: 1.25rem;
+  }
+
+  .screen-subtitle {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .welcome-content,
+  .camera-permission-content,
+  .align-content {
+    gap: 1rem;
+  }
+
+  .welcome-icon,
+  .camera-icon {
+    font-size: 3rem;
+  }
+
+  .welcome-text,
+  .permission-text {
+    font-size: 0.85rem;
+    max-width: 280px;
+  }
+
+  .alignment-preview {
+    max-width: 180px;
+  }
+
+  .align-instruction {
+    font-size: 0.85rem;
+    max-width: 280px;
+  }
+
+  .screen-footer {
+    padding: 1rem;
+  }
+
+  .btn-large {
+    padding: 0.75rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+  .onboarding-screen {
+    min-height: 90vh;
+  }
+
+  .screen-content {
+    padding: 1.5rem;
+  }
+
+  .welcome-content,
+  .camera-permission-content {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 2rem;
+  }
+
+  .welcome-icon,
+  .camera-icon {
+    flex-shrink: 0;
+    font-size: 3rem;
+  }
+
+  .welcome-text,
+  .permission-text {
+    max-width: none;
+    flex: 1;
+  }
+
+  .align-content {
+    flex-direction: row;
+    gap: 2rem;
+  }
+
+  .alignment-preview {
+    flex-shrink: 0;
+    max-width: 150px;
+  }
+
+  .align-instruction {
+    flex: 1;
+    max-width: none;
+    text-align: left;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .onboarding-modal {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+
+  .progress-bar {
+    height: 2px;
+  }
+
+  .alignment-frame {
+    border-width: 1.5px;
+  }
+
+  .alignment-guide {
+    border-width: 1px;
+  }
+}
+
+/* Touch-friendly improvements */
+@media (hover: none) and (pointer: coarse) {
+  .back-button {
+    padding: 0.75rem 0;
+    margin-bottom: 1rem;
+  }
+
+  .btn-large {
+    padding: 1.25rem;
+    font-size: 1.125rem;
+    touch-action: manipulation;
+  }
+
+  .back-button:active {
+    transform: scale(0.98);
+  }
+
+  .btn-large:active {
+    transform: scale(0.98);
   }
 }
 

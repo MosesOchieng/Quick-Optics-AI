@@ -8,10 +8,21 @@ const Layout = ({ children }) => {
   const isOnboarding = location.pathname === '/onboarding'
   const isAuthPage = ['/login', '/signup', '/payment-confirmation'].includes(location.pathname)
   const isEyeScanPage = location.pathname === '/eye-scan'
+  
+  // Hide navbar on all test pages for distraction-free testing
+  const isTestPage = [
+    '/eye-scan',
+    '/vision-tests', 
+    '/start-test',
+    '/mini-games',
+    '/ar-try-on'
+  ].includes(location.pathname)
+  
+  const hideNavbar = isHomePage || isOnboarding || isAuthPage || isTestPage
 
   return (
     <div className="layout">
-      {!isHomePage && !isOnboarding && !isAuthPage && !isEyeScanPage && (
+      {!hideNavbar && (
         <nav className="navbar">
           <div className="nav-container">
             <Link to="/" className="nav-logo">
@@ -29,7 +40,7 @@ const Layout = ({ children }) => {
         </nav>
       )}
       <main className="main-content">{children}</main>
-      {!isOnboarding && !isAuthPage && !isEyeScanPage && (
+      {!isOnboarding && !isAuthPage && !isTestPage && (
       <footer className="footer">
         <div className="footer-container">
           <div className="footer-section">

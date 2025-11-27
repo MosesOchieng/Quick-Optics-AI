@@ -7,13 +7,24 @@ const InstallPrompt = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null)
   const [isIOS, setIsIOS] = useState(false)
   const [isStandalone, setIsStandalone] = useState(false)
-  const [isMinimal, setIsMinimal] = useState(true) // Start with minimal view
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [isDismissed, setIsDismissed] = useState(false)
 
   useEffect(() => {
-    // Check if already installed
+    // Check if already installed or dismissed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsStandalone(true)
       return
+    }
+
+    // Check if user previously dismissed
+    const dismissed = localStorage.getItem('install-prompt-dismissed')
+    if (dismissed) {
+      const dismissedTime = parseInt(dismissed)
+      const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24)
+      if (daysSinceDismissed < 7) { // Don't show again for 7 days
+        return
+      }
     }
 
     // Check if iOS
@@ -24,23 +35,23 @@ const InstallPrompt = () => {
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault()
       setDeferredPrompt(e)
-      setTimeout(() => setShowPrompt(true), 3000) // Show after 3 seconds
+      setTimeout(() => setShowPrompt(true), 5000) // Show after 5 seconds
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
 
-    // For iOS, always show custom instructions after delay
+    // For iOS, show after delay
     if (iOS) {
-      const iosTimer = setTimeout(() => setShowPrompt(true), 4000)
+      const iosTimer = setTimeout(() => setShowPrompt(true), 8000) // Show after 8 seconds on iOS
       return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
         clearTimeout(iosTimer)
       }
     } else {
-      // For other browsers/platforms, show prompt after delay if not already shown
+      // For other browsers, show as fallback
       const fallbackTimer = setTimeout(() => {
         setShowPrompt(true)
-      }, 6000) // Show after 6 seconds as fallback
+      }, 10000) // Show after 10 seconds as fallback
 
       return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
@@ -65,116 +76,117 @@ const InstallPrompt = () => {
 
   const handleDismiss = () => {
     setShowPrompt(false)
-    // Don't save dismissal - show again on next page load
+    setIsDismissed(true)
+    localStorage.setItem('install-prompt-dismissed', Date.now().toString())
   }
 
-  const expandPrompt = () => {
-    setIsMinimal(false)
+  const handleExpand = () => {
+    setIsExpanded(true)
   }
 
-  if (isStandalone || !showPrompt) return null
+  const handleCollapse = () => {
+    setIsExpanded(false)
+  }
+
+  if (isStandalone || !showPrompt || isDismissed) return null
 
   return (
     <AnimatePresence>
       {showPrompt && (
         <>
-          {/* Minimal Banner */}
-          {isMinimal ? (
+          {!isExpanded ? (
+            /* Small Floating Prompt */
             <motion.div
-              initial={{ y: -100, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -100, opacity: 0 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="install-banner"
+              initial={{ scale: 0, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              className="install-floating-prompt"
             >
-              <div className="banner-content">
-                <div className="banner-icon">
-                  <img src="/Logo.jpeg" alt="Quick Optics AI" className="banner-logo" />
+              <div className="floating-content">
+                <div className="floating-icon">
+                  <img src="/Logo.jpeg" alt="Quick Optics AI" className="floating-logo" />
+                  <div className="install-badge">+</div>
                 </div>
-                <div className="banner-text">
-                  <span className="banner-title">Install Quick Optics AI</span>
-                  <span className="banner-subtitle">Get faster access & offline support</span>
+                <div className="floating-text">
+                  <div className="floating-title">Install App</div>
+                  <div className="floating-subtitle">Quick access & offline mode</div>
                 </div>
-                <div className="banner-actions">
-                  <button className="btn-banner-install" onClick={isIOS ? expandPrompt : handleInstall}>
-                    {isIOS ? 'How?' : 'Install'}
+                <div className="floating-actions">
+                  <button 
+                    className="btn-floating-install" 
+                    onClick={isIOS ? handleExpand : handleInstall}
+                    title={isIOS ? 'Show install instructions' : 'Install app'}
+                  >
+                    {isIOS ? '?' : '↓'}
                   </button>
-                  <button className="btn-banner-close" onClick={handleDismiss}>×</button>
+                  <button 
+                    className="btn-floating-close" 
+                    onClick={handleDismiss}
+                    title="Dismiss"
+                  >
+                    ×
+                  </button>
                 </div>
               </div>
             </motion.div>
           ) : (
-            /* Full Modal for iOS Instructions */
+            /* Expanded iOS Instructions */
             <>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className="install-overlay"
-                onClick={handleDismiss}
+                onClick={handleCollapse}
               />
               <motion.div
-                initial={{ opacity: 0, scale: 0.8, y: 50 }}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: 50 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="install-prompt"
+                className="install-modal"
               >
-                <button className="close-button" onClick={handleDismiss}>
-                  ×
-                </button>
-
-                <div className="install-content">
-                  <div className="install-icon">
-                    <div className="icon-circle">
-                      <img src="/Logo.jpeg" alt="Quick Optics AI" className="logo-image" />
-                    </div>
-                    <div className="icon-badge">+</div>
+                <div className="modal-header">
+                  <div className="modal-icon">
+                    <img src="/Logo.jpeg" alt="Quick Optics AI" className="modal-logo" />
                   </div>
+                  <button className="modal-close" onClick={handleCollapse}>×</button>
+                </div>
 
-                  <h2 className="install-title">Install Quick Optics AI</h2>
-                  <p className="install-description">
-                    Get the full app experience with faster access and offline support
+                <div className="modal-content">
+                  <h3 className="modal-title">Install Quick Optics AI</h3>
+                  <p className="modal-description">
+                    Add to your home screen for faster access and offline support
                   </p>
 
-                  <div className="install-benefits">
-                    <div className="benefit-item">
-                      <span className="benefit-icon">⚡</span>
-                      <span>Faster access</span>
-                    </div>
-                    <div className="benefit-item">
-                      <span className="benefit-icon">📱</span>
-                      <span>Works offline</span>
-                    </div>
-                    <div className="benefit-item">
-                      <span className="benefit-icon">🔔</span>
-                      <span>App-like experience</span>
-                    </div>
-                  </div>
-
-                  <div className="ios-instructions">
-                    <p className="instructions-title">How to install on iOS:</p>
-                    <div className="instructions-steps">
-                      <div className="step">
-                        <span className="step-number">1</span>
-                        <span>Tap the <strong>Share</strong> button <span className="share-icon">⬆️</span></span>
+                  <div className="install-steps">
+                    <div className="step-item">
+                      <div className="step-icon">⬆️</div>
+                      <div className="step-text">
+                        <div className="step-title">Tap Share</div>
+                        <div className="step-desc">Find the share button in Safari</div>
                       </div>
-                      <div className="step">
-                        <span className="step-number">2</span>
-                        <span>Select <strong>Add to Home Screen</strong> <span className="add-icon">➕</span></span>
+                    </div>
+                    <div className="step-item">
+                      <div className="step-icon">➕</div>
+                      <div className="step-text">
+                        <div className="step-title">Add to Home Screen</div>
+                        <div className="step-desc">Select from the share menu</div>
                       </div>
-                      <div className="step">
-                        <span className="step-number">3</span>
-                        <span>Tap <strong>Add</strong> to confirm <span className="check-icon">✅</span></span>
+                    </div>
+                    <div className="step-item">
+                      <div className="step-icon">✅</div>
+                      <div className="step-text">
+                        <div className="step-title">Confirm</div>
+                        <div className="step-desc">Tap "Add" to install</div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="install-actions">
-                    <button className="btn-dismiss" onClick={handleDismiss}>
-                      Got it!
-                    </button>
-                  </div>
+                  <button className="btn-modal-dismiss" onClick={handleDismiss}>
+                    Got it!
+                  </button>
                 </div>
               </motion.div>
             </>

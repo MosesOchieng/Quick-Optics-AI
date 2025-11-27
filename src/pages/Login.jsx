@@ -112,32 +112,32 @@ const Login = () => {
             )}
 
             <FormInput
-              type="email"
+                type="email"
               name="email"
               label="Email Address"
-              value={formData.email}
+                value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="you@example.com"
-              required
+                placeholder="you@example.com"
+                required
               error={errors.email}
               touched={touched.email}
               hint="Use the email you registered with"
               showEmailSuggestions
-            />
+              />
 
             <FormInput
-              type="password"
+                type="password"
               name="password"
               label="Password"
-              value={formData.password}
+                value={formData.password}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="••••••••"
-              required
+                placeholder="••••••••"
+                required
               error={errors.password}
               touched={touched.password}
-            />
+              />
 
             <button
               type="submit"

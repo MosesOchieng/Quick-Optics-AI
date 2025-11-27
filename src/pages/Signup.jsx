@@ -127,59 +127,59 @@ const Signup = () => {
             )}
 
             <FormInput
-              type="text"
+                type="text"
               name="name"
               label="Full Name"
-              value={formData.name}
+                value={formData.name}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="John Doe"
-              required
+                placeholder="John Doe"
+                required
               error={errors.name}
               touched={touched.name}
-            />
+              />
 
             <FormInput
-              type="email"
+                type="email"
               name="email"
               label="Email Address"
-              value={formData.email}
+                value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="you@example.com"
-              required
+                placeholder="you@example.com"
+                required
               error={errors.email}
               touched={touched.email}
               showEmailSuggestions
-            />
+              />
 
             <FormInput
-              type="password"
+                type="password"
               name="password"
               label="Password"
-              value={formData.password}
+                value={formData.password}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="••••••••"
-              required
+                placeholder="••••••••"
+                required
               error={errors.password}
               touched={touched.password}
               showPasswordStrength
-            />
+              />
 
             <FormInput
-              type="password"
+                type="password"
               name="confirmPassword"
               label="Confirm Password"
-              value={formData.confirmPassword}
+                value={formData.confirmPassword}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="••••••••"
-              required
+                placeholder="••••••••"
+                required
               error={errors.confirmPassword || (touched.confirmPassword && validatePasswordMatch())}
               touched={touched.confirmPassword}
               hint="Re-enter your password to confirm"
-            />
+              />
 
             <div className="form-options">
               <label className="checkbox-label">

@@ -9,6 +9,7 @@ import ColorBlindnessTest from '../components/tests/ColorBlindnessTest'
 import ContrastTest from '../components/tests/ContrastTest'
 import DryEyeTest from '../components/tests/DryEyeTest'
 import VoiceBot from '../components/VoiceBot'
+import TestLayout from '../components/TestLayout'
 import './VisionTests.css'
 
 const VisionTests = () => {
@@ -112,70 +113,64 @@ const VisionTests = () => {
   const TestComponent = tests[currentTest]?.component
 
   return (
-    <div className="vision-tests-page">
-          {!showResults && TestComponent && (
-            <VoiceBot
-              mode="test"
-              testType={tests[currentTest]?.id}
-              screenContent={{
-                title: tests[currentTest]?.name,
-                description: tests[currentTest]?.description
-              }}
-            />
-          )}
+    <TestLayout
+      title={showResults ? 'Tests Complete!' : tests[currentTest]?.name || 'Vision Tests'}
+      subtitle={showResults ? 'Analyzing your results...' : tests[currentTest]?.description || 'Comprehensive vision analysis'}
+      currentStep={currentTest + 1}
+      totalSteps={tests.length}
+      onExit={() => navigate('/dashboard')}
+      fullscreen={true}
+      darkMode={true}
+    >
+      <div className="vision-tests-page">
+        {!showResults && TestComponent && (
+          <VoiceBot
+            mode="test"
+            testType={tests[currentTest]?.id}
+            screenContent={{
+              title: tests[currentTest]?.name,
+              description: tests[currentTest]?.description
+            }}
+          />
+        )}
 
-      {showResults ? (
-        <div className="vision-tests">
-          <div className="test-complete-screen">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring' }}
-              className="complete-icon"
-            >
-              ✓
-            </motion.div>
-            <h2>All Tests Complete!</h2>
-            <p>Analyzing your results...</p>
+        {showResults ? (
+          <div className="vision-tests">
+            <div className="test-complete-screen">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring' }}
+                className="complete-icon"
+              >
+                ✓
+              </motion.div>
+              <h2>All Tests Complete!</h2>
+              <p>Analyzing your results...</p>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="vision-tests">
-      <div className="test-header">
-        <div className="test-progress">
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{ width: `${((currentTest + 1) / tests.length) * 100}%` }}
-            />
+        ) : (
+          <div className="vision-tests">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentTest}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.3 }}
+                className="test-content"
+              >
+                {TestComponent && (
+                  <TestComponent
+                    onComplete={(result) => handleTestComplete(tests[currentTest].id, result)}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
-          <p className="test-counter">
-            Test {currentTest + 1} of {tests.length}
-          </p>
-        </div>
-        <h2 className="test-name">{tests[currentTest]?.name}</h2>
-        <p className="test-description">{tests[currentTest]?.description}</p>
+        )}
       </div>
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentTest}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          transition={{ duration: 0.3 }}
-          className="test-content"
-        >
-          {TestComponent && (
-            <TestComponent
-              onComplete={(result) => handleTestComplete(tests[currentTest].id, result)}
-            />
-          )}
-        </motion.div>
-      </AnimatePresence>
-        </div>
-      )}
-    </div>
+    </TestLayout>
   )
 }
 

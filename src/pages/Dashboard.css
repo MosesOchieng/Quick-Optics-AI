@@ -4,6 +4,282 @@
   padding: 2rem 1.5rem;
 }
 
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .dashboard {
+    padding: 1rem;
+  }
+
+  .dashboard-container {
+    max-width: none;
+  }
+
+  .dashboard-header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+
+  .dashboard-header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .dashboard-header p {
+    font-size: 1rem;
+  }
+
+  .dashboard-content {
+    gap: 1.5rem;
+  }
+
+  .score-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    border-radius: 1.25rem;
+  }
+
+  .score-circle {
+    width: 120px;
+    height: 120px;
+  }
+
+  .score-number {
+    font-size: 2rem;
+  }
+
+  .score-label {
+    font-size: 0.8rem;
+  }
+
+  .score-info h3 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .score-info p {
+    font-size: 0.9rem;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .action-card {
+    padding: 1.25rem;
+  }
+
+  .action-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .action-card p {
+    font-size: 0.85rem;
+  }
+
+  .action-card .btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+  }
+
+  .stat-number {
+    font-size: 1.75rem;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+  }
+
+  .recent-tests {
+    margin-top: 1.5rem;
+  }
+
+  .recent-tests h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .test-list {
+    gap: 1rem;
+  }
+
+  .test-item {
+    padding: 1.25rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .test-info h4 {
+    font-size: 1rem;
+  }
+
+  .test-info p {
+    font-size: 0.8rem;
+  }
+
+  .test-score {
+    align-self: flex-end;
+    font-size: 1.25rem;
+  }
+
+  .progress-section {
+    margin-top: 1.5rem;
+  }
+
+  .progress-section h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .progress-chart {
+    height: 200px;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard {
+    padding: 0.75rem;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.75rem;
+  }
+
+  .dashboard-header p {
+    font-size: 0.95rem;
+  }
+
+  .score-card {
+    padding: 1.25rem;
+    gap: 1.25rem;
+  }
+
+  .score-circle {
+    width: 100px;
+    height: 100px;
+  }
+
+  .score-number {
+    font-size: 1.75rem;
+  }
+
+  .score-info h3 {
+    font-size: 1.25rem;
+  }
+
+  .score-info p {
+    font-size: 0.85rem;
+  }
+
+  .action-card {
+    padding: 1rem;
+  }
+
+  .action-card h3 {
+    font-size: 1rem;
+  }
+
+  .action-card p {
+    font-size: 0.8rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .stat-card {
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .test-item {
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .test-info h4 {
+    font-size: 0.95rem;
+  }
+
+  .test-info p {
+    font-size: 0.75rem;
+  }
+
+  .test-score {
+    font-size: 1.125rem;
+  }
+
+  .progress-chart {
+    height: 180px;
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .dashboard {
+    padding: 0.5rem;
+  }
+
+  .dashboard-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .score-card {
+    padding: 1rem;
+  }
+
+  .score-circle {
+    width: 80px;
+    height: 80px;
+  }
+
+  .score-number {
+    font-size: 1.5rem;
+  }
+
+  .score-info h3 {
+    font-size: 1.125rem;
+  }
+
+  .action-card {
+    padding: 0.875rem;
+  }
+
+  .stat-card {
+    padding: 0.875rem;
+  }
+
+  .test-item {
+    padding: 0.875rem;
+  }
+
+  .progress-chart {
+    height: 160px;
+  }
+}
+
 .dashboard-container {
   max-width: 1200px;
   margin: 0 auto;

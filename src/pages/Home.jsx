@@ -1,71 +1,126 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 import './Home.css'
 
 const Home = () => {
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    setIsVisible(true)
+  }, [])
+
   const features = [
     {
       icon: '🔍',
       title: 'AI Eye Test in Minutes',
-      description: 'Smart vision screening for myopia, hyperopia, astigmatism, color vision and more — using just your phone camera.'
+      description: 'Smart vision screening for myopia, hyperopia, astigmatism, color vision and more — using just your phone camera.',
+      gradient: 'from-blue-500 to-cyan-500'
     },
     {
       icon: '📊',
       title: 'Doctor-Style Insights',
-      description: 'Clear, friendly explanations plus AI-powered risk flags so you understand your eyes, not just the numbers.'
+      description: 'Clear, friendly explanations plus AI-powered risk flags so you understand your eyes, not just the numbers.',
+      gradient: 'from-purple-500 to-pink-500'
     },
     {
       icon: '👓',
       title: 'Smart Eyewear Match',
-      description: 'Face-fit and style hints to help you pick frames that actually suit your face and lifestyle.'
+      description: 'Face-fit and style hints to help you pick frames that actually suit your face and lifestyle.',
+      gradient: 'from-green-500 to-teal-500'
     }
+  ]
+
+  const stats = [
+    { number: '50K+', label: 'Tests Completed' },
+    { number: '98%', label: 'Accuracy Rate' },
+    { number: '5min', label: 'Average Test Time' },
+    { number: '24/7', label: 'Available' }
   ]
 
   return (
     <div className="home">
       {/* Hero Section */}
       <section className="hero">
+        <div className="hero-background">
+          <div className="gradient-orb orb-1"></div>
+          <div className="gradient-orb orb-2"></div>
+          <div className="gradient-orb orb-3"></div>
+        </div>
+        
         <div className="hero-container">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: isVisible ? 1 : 0, y: isVisible ? 0 : 30 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
             className="hero-content"
           >
-            <div className="logo-large">
-              <span className="logo-icon-large">👁️</span>
-              <h1 className="logo-text-large">Quick Optics AI</h1>
+            <div className="hero-badge">
+              <span className="badge-icon">✨</span>
+              <span>AI-Powered Vision Testing</span>
             </div>
-            <h2 className="hero-headline">Instant vision check. Anywhere. No appointment.</h2>
-            <p className="hero-subheadline">
-              Quick Optics AI turns your phone into a mini vision lab — eye tests, AI analysis, and smart eyewear guidance in one beautiful experience.
+            
+            <h1 className="hero-title">
+              Your Vision,
+              <span className="gradient-text"> Analyzed Instantly</span>
+            </h1>
+            
+            <p className="hero-description">
+              Transform your smartphone into a professional vision testing device. Get comprehensive eye analysis, AI insights, and personalized recommendations in minutes.
             </p>
-            <div className="hero-cta">
-              <Link to="/onboarding" className="btn btn-primary">
-                Get Started
+
+            <div className="hero-stats">
+              {stats.map((stat, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
+                  className="stat-item"
+                >
+                  <div className="stat-number">{stat.number}</div>
+                  <div className="stat-label">{stat.label}</div>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="hero-actions">
+              <Link to="/start-test" className="btn btn-primary">
+                <span>Start Free Test</span>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
               </Link>
-              <Link to="/how-it-works" className="btn btn-secondary btn-ghost">
-                See how it works
-              </Link>
-              <Link to="/start-test" className="btn btn-secondary">
-                Eye test process
+              <Link to="/how-it-works" className="btn btn-secondary">
+                <span>How It Works</span>
               </Link>
             </div>
-            <div className="hero-meta">
-              <div className="meta-pill">⏱️ 5–7 minute screening</div>
-              <div className="meta-pill">📱 Optimised for mobile</div>
-              <div className="meta-pill">🔒 Privacy-first, no raw images stored</div>
+
+            <div className="trust-indicators">
+              <div className="trust-item">
+                <span className="trust-icon">🔒</span>
+                <span>HIPAA Compliant</span>
+              </div>
+              <div className="trust-item">
+                <span className="trust-icon">⚡</span>
+                <span>5-Minute Test</span>
+              </div>
+              <div className="trust-item">
+                <span className="trust-icon">📱</span>
+                <span>Mobile Optimized</span>
+              </div>
             </div>
           </motion.div>
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="hero-mockup"
+            transition={{ duration: 0.8, delay: 0.4 }}
+            className="hero-visual"
           >
             <div className="phone-mockup">
-              <div className="phone-screen">
-                <div className="mockup-camera-view">
+              <div className="phone-frame">
+                <div className="phone-screen">
+                  <div className="mockup-camera-view">
                   {/* Status Bar */}
                   <div className="mockup-status-bar">
                     <div className="status-time">9:41</div>
@@ -213,6 +268,7 @@ const Home = () => {
                     <div className="action-button">Stop Scan</div>
                     <div className="action-button primary">Analyzing...</div>
                   </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -223,48 +279,122 @@ const Home = () => {
       {/* Features Section */}
       <section className="features">
         <div className="features-container">
-          <div className="features-header">
-            <h2>Why Quick Optics AI?</h2>
-            <p>Designed for fast, remote vision screening that still feels clinical, calm and trustworthy.</p>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="features-header"
+          >
+            <h2 className="features-title">
+              Why Choose <span className="gradient-text">Quick Optics AI</span>?
+            </h2>
+            <p className="features-subtitle">
+              Advanced AI technology meets user-friendly design for comprehensive vision care
+            </p>
+          </motion.div>
+
+          <div className="features-grid">
+            {features.map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.2 }}
+                className="feature-card"
+              >
+                <div className={`feature-icon-wrapper ${feature.gradient}`}>
+                  <span className="feature-icon">{feature.icon}</span>
+                </div>
+                <div className="feature-content">
+                  <h3 className="feature-title">{feature.title}</h3>
+                  <p className="feature-description">{feature.description}</p>
+                </div>
+                <div className="feature-arrow">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              </motion.div>
+            ))}
           </div>
-          {features.map((feature, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className="feature-card"
-            >
-              <div className="feature-icon">{feature.icon}</div>
-              <h3 className="feature-title">{feature.title}</h3>
-              <p className="feature-description">{feature.description}</p>
-            </motion.div>
-          ))}
         </div>
       </section>
 
-      {/* How it works strip */}
-      <section className="how-it-works-strip">
-        <div className="how-container">
-          <h2>How it works</h2>
-          <div className="steps">
-            <div className="step">
-              <div className="step-number">1</div>
-              <h3>Create your profile & start the eye test</h3>
-              <p>Sign up or log in, then we guide you to align your face and run a short, camera-based eye scan plus quick visual tests.</p>
-            </div>
-            <div className="step">
-              <div className="step-number">2</div>
-              <h3>AI compares your vision</h3>
-              <p>Our CVIE engine analyses patterns, stability and clarity versus population baselines.</p>
-            </div>
-            <div className="step">
-              <div className="step-number">3</div>
-              <h3>Get a clear summary in your dashboard</h3>
-              <p>See friendly scores, risk indicators and suggestions for next steps or eyewear — results are only available when you&apos;re logged in.</p>
-            </div>
+      {/* How it works section */}
+      <section className="how-it-works">
+        <div className="how-it-works-container">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="how-it-works-header"
+          >
+            <h2 className="how-it-works-title">
+              How It <span className="gradient-text">Works</span>
+            </h2>
+            <p className="how-it-works-subtitle">
+              Three simple steps to comprehensive vision analysis
+            </p>
+          </motion.div>
+
+          <div className="steps-container">
+            <div className="steps-timeline"></div>
+            {[
+              {
+                number: "01",
+                title: "Start Your Test",
+                description: "Position your face in front of the camera and follow our guided setup process.",
+                icon: "📱"
+              },
+              {
+                number: "02", 
+                title: "AI Analysis",
+                description: "Our advanced AI analyzes your vision patterns, eye movements, and visual responses.",
+                icon: "🤖"
+              },
+              {
+                number: "03",
+                title: "Get Results",
+                description: "Receive detailed insights, recommendations, and personalized eyewear suggestions.",
+                icon: "📊"
+              }
+            ].map((step, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: index % 2 === 0 ? -40 : 40 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.2 }}
+                className={`step-card ${index % 2 === 0 ? 'step-left' : 'step-right'}`}
+              >
+                <div className="step-number-badge">{step.number}</div>
+                <div className="step-icon">{step.icon}</div>
+                <div className="step-content">
+                  <h3 className="step-title">{step.title}</h3>
+                  <p className="step-description">{step.description}</p>
+                </div>
+              </motion.div>
+            ))}
           </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="cta-section"
+          >
+            <div className="cta-card">
+              <h3>Ready to test your vision?</h3>
+              <p>Join thousands of users who trust Quick Optics AI for their vision health</p>
+              <Link to="/start-test" className="btn btn-primary">
+                Start Free Test Now
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
     </div>

@@ -90,14 +90,689 @@
   font-size: 1.25rem;
   color: #e5e7eb;
 }
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .eye-scan {
+    padding: 0;
+  }
+
+  .scan-container {
+    padding: 0.5rem;
+  }
+
+  .scan-layout {
+    flex-direction: column;
+    gap: 1rem;
+    height: auto;
+  }
+
+  .camera-view {
+    width: 100%;
+    height: auto;
+    min-height: 50vh;
+    order: 1;
+  }
+
+  .dataset-comparison-panel {
+    width: 100%;
+    height: auto;
+    min-height: 30vh;
+    order: 2;
+  }
+
+  .eye-scan-controls {
+    order: 0;
+    margin-bottom: 1rem;
+  }
+
+  .scan-phase-indicator {
+    margin-bottom: 1rem;
+  }
+
+  .phase-steps {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .phase-step {
+    flex: 1;
+    min-width: calc(50% - 0.25rem);
+    padding: 0.5rem;
+  }
+
+  .step-number {
+    width: 20px;
+    height: 20px;
+    font-size: 0.75rem;
+  }
+
+  .step-label {
+    font-size: 0.75rem;
+  }
+
+  .current-eye-indicator {
+    margin-bottom: 1rem;
+  }
+
+  .eye-focus-display {
+    gap: 1rem;
+  }
+
+  .eye-indicator {
+    padding: 0.75rem;
+  }
+
+  .eye-icon {
+    font-size: 1.5rem;
+  }
+
+  .camera-container {
+    border-radius: 1rem;
+    overflow: hidden;
+  }
+
+  .camera-feed {
+    width: 100%;
+    height: auto;
+    max-height: 50vh;
+    object-fit: cover;
+  }
+
+  .zoom-controls {
+    top: 0.5rem;
+    left: 0.5rem;
+    gap: 0.25rem;
+  }
+
+  .zoom-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  .zoom-level {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .alignment-rectangle {
+    border-width: 2px;
+  }
+
+  .corner {
+    width: 15px;
+    height: 15px;
+    border-width: 2px;
+  }
+
+  .eye-overlay {
+    gap: 60px;
+  }
+
+  .eye-marker {
+    width: 20px;
+    height: 20px;
+  }
+
+  .measurement-overlay {
+    display: none; /* Hide on mobile for cleaner view */
+  }
+
+  .scan-status {
+    padding: 0.75rem;
+    margin: 0.5rem;
+    border-radius: 0.75rem;
+  }
+
+  .scan-status p {
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .measurement-panel {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin: 1rem 0.5rem;
+  }
+
+  .measurement-card {
+    padding: 0.75rem;
+  }
+
+  .measurement-card span {
+    font-size: 0.75rem;
+  }
+
+  .measurement-card strong {
+    font-size: 1rem;
+  }
+
+  .quality-panel {
+    margin: 1rem 0.5rem;
+    padding: 1rem;
+  }
+
+  .quality-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .blink-card {
+    padding: 0.75rem;
+  }
+
+  .blink-card span {
+    font-size: 0.75rem;
+  }
+
+  .blink-card strong {
+    font-size: 1rem;
+  }
+
+  .dataset-comparison-panel {
+    padding: 1rem;
+  }
+
+  .comparison-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .comparison-status span {
+    font-size: 0.8rem;
+  }
+
+  .comparison-message {
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .dataset-image-container {
+    max-width: 200px;
+    margin: 0 auto;
+  }
+
+  .dataset-comparison-image {
+    border-radius: 0.75rem;
+  }
+
+  .dataset-image-label {
+    padding: 0.5rem;
+  }
+
+  .condition-badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .pattern-label {
+    font-size: 0.75rem;
+  }
+
+  .comparison-progress-section {
+    margin-top: 1rem;
+  }
+
+  .comparison-progress-label {
+    font-size: 0.8rem;
+  }
+
+  .comparison-stats {
+    font-size: 0.75rem;
+    gap: 1rem;
+  }
+
+  .scan-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin: 1rem 0.5rem;
+  }
+
+  .metric-group {
+    padding: 0.75rem;
+  }
+
+  .metric-label {
+    font-size: 0.75rem;
+  }
+
+  .metric-value {
+    font-size: 1rem;
+  }
+
+  .captured-frames {
+    margin: 1rem 0.5rem;
+  }
+
+  .captured-frames h3 {
+    font-size: 1.1rem;
+  }
+
+  .captured-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+
+  .captured-frame {
+    border-radius: 0.5rem;
+  }
+
+  .captured-label {
+    font-size: 0.7rem;
+  }
+
+  .probability-panel {
+    margin: 1rem 0.5rem;
+  }
+
+  .probability-header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start;
+  }
+
+  .probability-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .download-evidence-btn {
+    font-size: 0.8rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .probability-item {
+    grid-template-columns: 100px 1fr 50px;
+    gap: 0.5rem;
+  }
+
+  .probability-label {
+    font-size: 0.75rem;
+  }
+
+  .probability-value {
+    font-size: 0.8rem;
+  }
+
+  .cloud-comparison {
+    margin-top: 1rem;
+  }
+
+  .cloud-comparison h4 {
+    font-size: 1rem;
+  }
+
+  .comparison-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .comparison-item {
+    padding: 0.75rem;
+  }
+
+  .comparison-item span {
+    font-size: 0.8rem;
+  }
+
+  .comparison-item strong {
+    font-size: 0.9rem;
+  }
+
+  .recommendation-text {
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  .temporal-trends-panel,
+  .fatigue-panel,
+  .lighting-recommendations-panel {
+    margin: 1rem 0.5rem;
+  }
+
+  .temporal-trends-panel h3,
+  .fatigue-panel h3,
+  .lighting-recommendations-panel h4 {
+    font-size: 1.1rem;
+  }
+
+  .trend-item,
+  .fatigue-detail,
+  .lighting-rec {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .trend-label,
+  .fatigue-score span {
+    font-size: 0.8rem;
+  }
+
+  .trend-value,
+  .trend-avg,
+  .fatigue-score strong {
+    font-size: 0.9rem;
+  }
+
+  .fatigue-recommendations {
+    gap: 0.5rem;
+  }
+
+  .recommendation-item {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .ar-calibration-toggle {
+    margin: 1rem 0.5rem;
+  }
+
+  .ar-toggle-btn {
+    font-size: 0.9rem;
+    padding: 0.75rem 1.5rem;
+  }
+
+  .history-panel {
+    margin: 1rem 0.5rem;
+  }
+
+  .history-panel h3 {
+    font-size: 1.1rem;
+  }
+
+  .history-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .history-stats div {
+    padding: 0.75rem;
+  }
+
+  .history-stats span {
+    font-size: 0.7rem;
+  }
+
+  .history-stats strong {
+    font-size: 1.1rem;
+  }
+
+  .cv-metrics {
+    margin: 1rem 0.5rem;
+  }
+
+  .cv-metrics h4 {
+    font-size: 1rem;
+  }
+
+  .cv-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .cv-metric {
+    padding: 0.75rem;
+  }
+
+  .cv-label {
+    font-size: 0.75rem;
+  }
+
+  .cv-value {
+    font-size: 1rem;
+  }
+
+  .eye-metrics-comparison {
+    margin: 1rem 0.5rem;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .eye-metric-card {
+    padding: 1rem;
+  }
+
+  .eye-metric-card h4 {
+    font-size: 1.1rem;
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .metric-item {
+    padding: 0.75rem;
+  }
+
+  .metric-item span {
+    font-size: 0.8rem;
+  }
+
+  .metric-value {
+    font-size: 1rem;
+  }
+
+  .symmetry-analysis {
+    margin: 1rem 0.5rem;
+  }
+
+  .symmetry-analysis h4 {
+    font-size: 1.1rem;
+  }
+
+  .symmetry-metrics {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .symmetry-item {
+    padding: 0.75rem;
+  }
+
+  .symmetry-item span {
+    font-size: 0.8rem;
+  }
+
+  .symmetry-insights {
+    gap: 0.5rem;
+  }
+
+  .insight-item {
+    padding: 0.75rem;
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
+  .admin-tools {
+    margin: 1rem 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .btn-annotation-tool,
+  .btn-voice-test {
+    font-size: 0.8rem;
+    padding: 0.75rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .scan-container {
+    padding: 0.25rem;
+  }
+
+  .phase-step {
+    min-width: 100%;
+    margin-bottom: 0.25rem;
+  }
+
+  .eye-focus-display {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .camera-feed {
+    max-height: 40vh;
+  }
+
+  .zoom-controls {
+    top: 0.25rem;
+    left: 0.25rem;
+  }
+
+  .zoom-btn {
+    width: 28px;
+    height: 28px;
+    font-size: 0.9rem;
+  }
+
+  .zoom-level {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .eye-overlay {
+    gap: 50px;
+  }
+
+  .eye-marker {
+    width: 16px;
+    height: 16px;
+  }
+
+  .scan-status {
+    margin: 0.25rem;
+    padding: 0.5rem;
+  }
+
+  .scan-status p {
+    font-size: 0.85rem;
+  }
+
+  .measurement-panel {
+    grid-template-columns: 1fr;
+    margin: 0.5rem 0.25rem;
+  }
+
+  .quality-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .dataset-image-container {
+    max-width: 150px;
+  }
+
+  .comparison-stats {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .scan-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .captured-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .probability-item {
+    grid-template-columns: 80px 1fr 40px;
+    gap: 0.25rem;
+  }
+
+  .comparison-grid {
+    gap: 0.5rem;
+  }
+
+  .history-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .cv-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-tools {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 360px) {
+  .scan-container {
+    padding: 0;
+  }
+
+  .eye-scan-controls {
+    margin-bottom: 0.5rem;
+  }
+
+  .phase-step {
+    padding: 0.25rem;
+  }
+
+  .step-number {
+    width: 16px;
+    height: 16px;
+    font-size: 0.7rem;
+  }
+
+  .step-label {
+    font-size: 0.7rem;
+  }
+
+  .eye-indicator {
+    padding: 0.5rem;
+  }
+
+  .eye-icon {
+    font-size: 1.25rem;
+  }
+
+  .camera-feed {
+    max-height: 35vh;
+  }
+
+  .scan-status p {
+    font-size: 0.8rem;
+  }
+
+  .dataset-image-container {
+    max-width: 120px;
+  }
+
+  .condition-badge {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .pattern-label {
+    font-size: 0.7rem;
+  }
+
+  .probability-item {
+    grid-template-columns: 70px 1fr 35px;
+  }
+
+  .probability-label {
+    font-size: 0.7rem;
+  }
+
+  .probability-value {
+    font-size: 0.75rem;
+  }
+}
 .eye-scan {
   min-height: 100vh;
-  background: var(--gray-900);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
+  flex-direction: column;
+  padding: 0;
   position: relative;
+  overflow-x: hidden;
 }
 
 .scan-container {

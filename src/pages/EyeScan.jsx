@@ -7,6 +7,8 @@ import CVIEIndicator from '../components/CVIEIndicator'
 import VoiceBot from '../components/VoiceBot'
 import ARCalibrationVisualizer from '../components/ARCalibrationVisualizer'
 import ImageAnnotationTool from '../components/ImageAnnotationTool'
+import TestLayout from '../components/TestLayout'
+import FaceDetector from '../components/FaceDetector'
 import cloudConditionScorer from '../services/cloudConditionScorer'
 import adaptiveVoiceCoach from '../services/adaptiveVoiceCoach'
 import temporalConditionTracker from '../services/temporalConditionTracker'
@@ -1320,9 +1322,46 @@ const EyeScan = () => {
     }
   }, [isAligned, faceDetected])
 
+  const getPhaseTitle = () => {
+    switch (scanPhase) {
+      case 'preparation': return 'Eye Scan Preparation'
+      case 'left-eye': return 'Left Eye Analysis'
+      case 'right-eye': return 'Right Eye Analysis'
+      case 'comparison': return 'Eye Comparison'
+      case 'complete': return 'Scan Complete'
+      default: return 'AI Eye Scan'
+    }
+  }
+
+  const getPhaseSubtitle = () => {
+    switch (scanPhase) {
+      case 'preparation': return 'Position your face in the camera view'
+      case 'left-eye': return 'Focus on your left eye analysis'
+      case 'right-eye': return 'Focus on your right eye analysis'
+      case 'comparison': return 'Comparing both eyes for comprehensive analysis'
+      case 'complete': return 'Analysis complete - preparing results'
+      default: return 'AI-powered vision analysis'
+    }
+  }
+
+  const getCurrentStep = () => {
+    const phases = ['preparation', 'left-eye', 'right-eye', 'comparison', 'complete']
+    return phases.indexOf(scanPhase) + 1
+  }
+
   return (
-    <div className="eye-scan">
-      <div className="scan-container">
+    <TestLayout
+      title={getPhaseTitle()}
+      subtitle={getPhaseSubtitle()}
+      currentStep={getCurrentStep()}
+      totalSteps={5}
+      progress={scanProgress}
+      onExit={() => navigate('/dashboard')}
+      fullscreen={true}
+      darkMode={true}
+    >
+      <div className="eye-scan">
+        <div className="scan-container">
         {/* Side-by-side layout: Camera on left, Dataset comparison on right */}
         <div className="scan-layout">
           {/* Separate Eye Scanning Controls */}
@@ -1413,20 +1452,67 @@ const EyeScan = () => {
             </button>
           </div>
           
-          {/* Live camera preview for video-based analysis */}
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="camera-feed"
-            style={{
-              transform: `scale(${zoomLevel})`,
-              transformOrigin: 'center center'
-            }}
-          />
-          {/* Canvas reserved for computer-vision processing (eye detection, brightness, etc.) */}
-          <canvas ref={canvasRef} className="scan-overlay" />
+          {/* Camera container with face detection */}
+          <div className="camera-container" style={{ position: 'relative' }}>
+            {/* Live camera preview for video-based analysis */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="camera-feed"
+              style={{
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: 'center center'
+              }}
+            />
+            
+            {/* Enhanced Face Detection Overlay */}
+            <FaceDetector
+              videoRef={videoRef}
+              onFaceDetected={(metrics) => {
+                setFaceDetected(true)
+                setFaceMetrics(metrics)
+                const msg = 'Face detected! Hold still and look straight ahead.'
+                setAiMessage(msg)
+                speakGuidance(msg, true)
+              }}
+              onFaceLost={() => {
+                setFaceDetected(false)
+                setIsAligned(false)
+                if (isScanning) {
+                  setIsScanning(false)
+                  setScanProgress(0)
+                  scanProgressRef.current = 0
+                }
+                const msg = 'Face not detected. Please position your face in the camera view.'
+                setAiMessage(msg)
+                speakGuidance(msg, true)
+              }}
+              onFaceMetrics={(metrics) => {
+                setFaceMetrics(metrics)
+                // Update eye-specific metrics based on face detection
+                if (metrics.leftEye && metrics.rightEye) {
+                  setEyeSpecificMetrics(prev => ({
+                    left: {
+                      ...prev.left,
+                      pupilSize: metrics.leftEye.center ? 0.8 : 0,
+                      alignment: metrics.faceCenter ? 0.9 : 0.5
+                    },
+                    right: {
+                      ...prev.right,
+                      pupilSize: metrics.rightEye.center ? 0.8 : 0,
+                      alignment: metrics.faceCenter ? 0.9 : 0.5
+                    }
+                  }))
+                }
+              }}
+              showOverlay={true}
+              adaptiveBoxes={true}
+            />
+            
+            {/* Canvas reserved for computer-vision processing (eye detection, brightness, etc.) */}
+            <canvas ref={canvasRef} className="scan-overlay" />
 
           {/* Face alignment frame */}
           <div
@@ -1520,6 +1606,7 @@ const EyeScan = () => {
               <span className="progress-text">{scanProgress}%</span>
             </div>
           )}
+          </div>
           </div>
 
           {/* Right side: Dataset comparison panel */}
@@ -2011,7 +2098,8 @@ const EyeScan = () => {
           }}
         />
       )}
-    </div>
+      </div>
+    </TestLayout>
   )
 }
 

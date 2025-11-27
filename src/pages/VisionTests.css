@@ -111,17 +111,211 @@
   opacity: 0.9;
 }
 
-@media (max-width: 480px) {
+/* Enhanced Mobile Responsive Styles */
+@media (max-width: 768px) {
+  .vision-tests-page {
+    padding: 1rem 0.5rem;
+    min-height: 100vh;
+  }
+
+  .vision-tests {
+    max-width: none;
+    border-radius: 1rem;
+    margin: 0;
+    box-shadow: var(--shadow-md);
+  }
+
   .test-header {
     padding: 1.5rem 1rem;
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+  }
+
+  .test-progress {
+    margin-bottom: 1rem;
+  }
+
+  .progress-bar {
+    height: 4px;
+  }
+
+  .test-counter {
+    font-size: 0.8rem;
   }
 
   .test-name {
     font-size: 1.5rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.3;
+  }
+
+  .test-description {
+    font-size: 0.95rem;
+    line-height: 1.4;
   }
 
   .test-content {
     padding: 1.5rem 1rem;
+    min-height: 60vh;
+  }
+
+  .test-complete-screen {
+    padding: 1.5rem;
+  }
+
+  .complete-icon {
+    width: 80px;
+    height: 80px;
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .test-complete-screen h2 {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .test-complete-screen p {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .vision-tests-page {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .vision-tests {
+    border-radius: 0.75rem;
+  }
+
+  .test-header {
+    padding: 1.25rem 0.75rem;
+    border-bottom-left-radius: 0.75rem;
+    border-bottom-right-radius: 0.75rem;
+  }
+
+  .test-progress {
+    margin-bottom: 0.75rem;
+  }
+
+  .test-counter {
+    font-size: 0.75rem;
+  }
+
+  .test-name {
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .test-description {
+    font-size: 0.9rem;
+  }
+
+  .test-content {
+    padding: 1.25rem 0.75rem;
+    min-height: 55vh;
+  }
+
+  .test-complete-screen {
+    padding: 1rem;
+  }
+
+  .complete-icon {
+    width: 70px;
+    height: 70px;
+    font-size: 2.5rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .test-complete-screen h2 {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+
+  .test-complete-screen p {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .vision-tests-page {
+    padding: 0.25rem;
+  }
+
+  .test-header {
+    padding: 1rem 0.5rem;
+  }
+
+  .test-name {
+    font-size: 1.1rem;
+  }
+
+  .test-description {
+    font-size: 0.85rem;
+  }
+
+  .test-content {
+    padding: 1rem 0.5rem;
+    min-height: 50vh;
+  }
+
+  .complete-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  .test-complete-screen h2 {
+    font-size: 1.25rem;
+  }
+
+  .test-complete-screen p {
+    font-size: 0.9rem;
+  }
+}
+
+/* Landscape orientation adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+  .vision-tests-page {
+    padding: 0.5rem;
+  }
+
+  .test-header {
+    padding: 1rem;
+  }
+
+  .test-name {
+    font-size: 1.25rem;
+  }
+
+  .test-content {
+    padding: 1rem;
+    min-height: 40vh;
+  }
+
+  .test-complete-screen {
+    flex-direction: row;
+    text-align: left;
+    gap: 2rem;
+  }
+
+  .complete-icon {
+    margin-bottom: 0;
+    flex-shrink: 0;
+  }
+}
+
+/* High DPI displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .vision-tests {
+    border: 0.5px solid rgba(15,23,42,0.06);
+  }
+
+  .progress-bar {
+    height: 3px;
   }
 }
 

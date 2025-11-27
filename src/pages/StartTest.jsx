@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import TestLayout from '../components/TestLayout'
 import './StartTest.css'
 
 const StartTest = () => {
@@ -71,17 +72,26 @@ const StartTest = () => {
   ]
 
   return (
-    <div className="start-test">
-      <div className="onboarding-modal">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentScreen}
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -50 }}
-            transition={{ duration: 0.3 }}
-            className="onboarding-screen"
-          >
+    <TestLayout
+      title={screens[currentScreen]?.title || 'Vision Test Setup'}
+      subtitle={screens[currentScreen]?.subtitle || 'Preparing your vision test'}
+      currentStep={currentScreen + 1}
+      totalSteps={screens.length}
+      onExit={() => navigate('/dashboard')}
+      fullscreen={false}
+      darkMode={true}
+    >
+      <div className="start-test">
+        <div className="onboarding-modal">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentScreen}
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+              transition={{ duration: 0.3 }}
+              className="onboarding-screen"
+            >
             <div className="screen-header">
               {currentScreen > 0 && (
                 <button
@@ -117,6 +127,7 @@ const StartTest = () => {
         </AnimatePresence>
       </div>
     </div>
+    </TestLayout>
   )
 }
 
