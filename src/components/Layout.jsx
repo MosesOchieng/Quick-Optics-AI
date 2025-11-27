@@ -78,9 +78,10 @@ const Layout = ({ children }) => {
             <h3>Quick Optics AI</h3>
             <p>See Smarter with AI</p>
           </div>
-          <div className="footer-section">
+              <div className="footer-section">
             <h4>About</h4>
             <Link to="/how-it-works">How It Works</Link>
+            <Link to="/faq">FAQ</Link>
           </div>
           <div className="footer-section">
             <h4>Legal</h4>

@@ -28,6 +28,8 @@ import Contact from './pages/Contact'
 import PreTestConsultation from './pages/PreTestConsultation'
 import TestAI from './pages/TestAI'
 import BackendTest from './pages/BackendTest'
+import SplashScreen from './pages/SplashScreen'
+import FAQ from './pages/FAQ'
 import Layout from './components/Layout'
 import InstallPrompt from './components/InstallPrompt'
 
@@ -58,6 +60,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/how-it-works" element={<HowItWorks />} />
+            <Route path="/faq" element={<FAQ />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/pre-test-consultation" element={<PreTestConsultation />} />
             <Route path="/test-ai" element={<TestAI />} />

@@ -1,19 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import api from '../utils/api'
 import Toast from '../components/Toast'
 import FormInput from '../components/FormInput'
+import PreAuthSplash from './PreAuthSplash'
 import { useFormValidation } from '../utils/validation'
 import './Auth.css'
 
 const Login = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const [showSplash, setShowSplash] = useState(true)
+  const userType = location.state?.userType || 'user' // 'user' or 'clinic'
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [serverError, setServerError] = useState('')
+
+  useEffect(() => {
+    // Show splash for 2 seconds on first visit
+    const hasSeenSplash = localStorage.getItem('hasSeenPreAuthSplash')
+    if (!hasSeenSplash) {
+      const timer = setTimeout(() => {
+        setShowSplash(false)
+      }, 2000)
+      return () => clearTimeout(timer)
+    } else {
+      setShowSplash(false)
+    }
+  }, [])
 
   const {
     formData,
@@ -64,6 +80,10 @@ const Login = () => {
     }
   }
 
+  if (showSplash) {
+    return <PreAuthSplash />
+  }
+
   return (
     <div className="auth-page">
       {showSuccess && (
@@ -86,8 +106,17 @@ const Login = () => {
               <span className="logo-icon">👁️</span>
               <h1>Quick Optics AI</h1>
             </div>
-            <h2>Welcome Back</h2>
-            <p>Sign in to continue your vision journey</p>
+            <h2>{userType === 'clinic' ? 'Clinic Portal' : 'Welcome Back'}</h2>
+            <p>
+              {userType === 'clinic' 
+                ? 'Access your clinic dashboard and manage patient screenings'
+                : 'Sign in to continue your vision journey'}
+            </p>
+            {userType === 'clinic' && (
+              <div className="clinic-badge">
+                <span>👨‍⚕️</span> Clinic/Optometrist Access
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">

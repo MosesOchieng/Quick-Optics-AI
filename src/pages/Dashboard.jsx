@@ -5,6 +5,8 @@ import storage from '../utils/storage'
 import api from '../utils/api'
 import EmptyState from '../components/EmptyState'
 import VoiceBot from '../components/VoiceBot'
+import TestReminders from '../components/TestReminders'
+import DataVisualization from '../components/DataVisualization'
 import './Dashboard.css'
 
 const Dashboard = () => {
@@ -149,6 +151,15 @@ const Dashboard = () => {
               )}
             </div>
           </div>
+        </motion.div>
+
+        {/* Test Reminders */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <TestReminders />
         </motion.div>
 
         {recentTest ? (
@@ -300,11 +311,22 @@ const Dashboard = () => {
               </motion.div>
             )}
 
+            {/* Data Visualization */}
+            {testHistory.length > 1 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
+              >
+                <DataVisualization testHistory={testHistory} />
+              </motion.div>
+            )}
+
             <motion.div
               className="test-hub"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35 }}
+              transition={{ delay: 0.4 }}
             >
               <h2>Test Hub</h2>
               <p className="test-hub-subtitle">

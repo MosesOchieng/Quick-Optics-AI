@@ -1,14 +1,34 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
+import SplashScreen from './SplashScreen'
 import './Home.css'
 
 const Home = () => {
   const [isVisible, setIsVisible] = useState(false)
+  const [showSplash, setShowSplash] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
-    setIsVisible(true)
+    // Check if user has seen splash screens
+    const hasSeenSplash = localStorage.getItem('hasSeenHomeSplash')
+    
+    if (!hasSeenSplash) {
+      setShowSplash(true)
+      localStorage.setItem('hasSeenHomeSplash', 'true')
+    } else {
+      setIsVisible(true)
+    }
   }, [])
+
+  const handleSplashComplete = () => {
+    setShowSplash(false)
+    setIsVisible(true)
+  }
+
+  if (showSplash) {
+    return <SplashScreen onComplete={handleSplashComplete} />
+  }
 
   const features = [
     {

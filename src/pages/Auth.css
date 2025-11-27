@@ -297,6 +297,23 @@
 }
 
 /* Enhanced Mobile Responsive Styles */
+.clinic-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--primary-teal) 0%, var(--primary-teal-dark) 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+}
+
+.clinic-badge span {
+  font-size: 1.2rem;
+}
+
 @media (max-width: 768px) {
   .auth-page {
     padding: 1rem 0.5rem;
