@@ -160,6 +160,14 @@ const EyeScan = () => {
     explainableAILog.startScan(`scan_${Date.now()}`)
     fatigueDetector.reset()
     
+    // Scroll camera into view after a short delay
+    setTimeout(() => {
+      const cameraElement = document.querySelector('.camera-view')
+      if (cameraElement) {
+        cameraElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }, 500)
+    
     return () => {
       stopCamera()
       if (captureIntervalRef.current) {
@@ -1003,8 +1011,10 @@ const EyeScan = () => {
             explainableAILog.finishScan()
           setAnalysisPhase('Complete')
 
+            // Navigate without page reload - use replace to avoid back button issues
             setTimeout(() => {
               navigate('/vision-tests', { 
+                replace: true, // Use replace to prevent reload
                 state: { 
                   aiAnalysis: {
                     ...comparison,
@@ -1240,70 +1250,22 @@ const EyeScan = () => {
         <div className="scan-container">
         {/* Side-by-side layout: Camera on left, Dataset comparison on right */}
         <div className="scan-layout">
-          {/* Separate Eye Scanning Controls */}
-          <div className="eye-scan-controls">
-            <div className="scan-phase-indicator">
-              <div className="phase-steps">
-                <div className={`phase-step ${scanPhase === 'preparation' ? 'active' : scanPhase !== 'preparation' ? 'completed' : ''}`}>
-                  <span className="step-number">1</span>
-                  <span className="step-label">Preparation</span>
+          {/* Compact Step Indicator - Only show during active scanning */}
+          {scanPhase !== 'preparation' && (
+            <div className="compact-step-indicator">
+              <div className="compact-steps">
+                <div className={`compact-step ${scanPhase === 'left-eye' ? 'active' : ['right-eye', 'comparison', 'complete'].includes(scanPhase) ? 'completed' : ''}`}>
+                  <span>L</span>
                 </div>
-                <div className={`phase-step ${scanPhase === 'left-eye' ? 'active' : ['right-eye', 'comparison', 'complete'].includes(scanPhase) ? 'completed' : ''}`}>
-                  <span className="step-number">2</span>
-                  <span className="step-label">Left Eye</span>
+                <div className={`compact-step ${scanPhase === 'right-eye' ? 'active' : ['comparison', 'complete'].includes(scanPhase) ? 'completed' : ''}`}>
+                  <span>R</span>
                 </div>
-                <div className={`phase-step ${scanPhase === 'right-eye' ? 'active' : ['comparison', 'complete'].includes(scanPhase) ? 'completed' : ''}`}>
-                  <span className="step-number">3</span>
-                  <span className="step-label">Right Eye</span>
-                </div>
-                <div className={`phase-step ${scanPhase === 'comparison' ? 'active' : scanPhase === 'complete' ? 'completed' : ''}`}>
-                  <span className="step-number">4</span>
-                  <span className="step-label">Comparison</span>
-                </div>
-                <div className={`phase-step ${scanPhase === 'complete' ? 'active' : ''}`}>
-                  <span className="step-number">5</span>
-                  <span className="step-label">Results</span>
+                <div className={`compact-step ${scanPhase === 'comparison' ? 'active' : scanPhase === 'complete' ? 'completed' : ''}`}>
+                  <span>✓</span>
                 </div>
               </div>
             </div>
-
-            <div className="current-eye-indicator">
-              <div className="eye-focus-display">
-                <div className={`eye-indicator left ${currentEye === 'left' || currentEye === 'both' ? 'active' : ''}`}>
-                  <div className="eye-icon">👁️</div>
-                  <span>Left Eye</span>
-                  {leftEyeData && <div className="eye-status completed">✓</div>}
-                </div>
-                <div className={`eye-indicator right ${currentEye === 'right' || currentEye === 'both' ? 'active' : ''}`}>
-                  <div className="eye-icon">👁️</div>
-                  <span>Right Eye</span>
-                  {rightEyeData && <div className="eye-status completed">✓</div>}
-                </div>
-              </div>
-            </div>
-
-            {/* Removed manual navigation buttons for seamless auto-progression */}
-            <div className="scan-navigation">
-              <div className="auto-progress-info">
-                {scanPhase === 'preparation' && (
-                  <p className="progress-message">
-                    {faceDetected && isAligned 
-                      ? "Perfect! Starting scan automatically..." 
-                      : "Position your face in the camera view to begin"
-                    }
-                  </p>
-                )}
-                {scanPhase !== 'preparation' && scanPhase !== 'complete' && (
-                  <p className="progress-message">
-                    {canProceedToNext 
-                      ? `${currentEye === 'left' ? 'Left' : 'Right'} eye complete! Moving to next step...`
-                      : `Analyzing your ${currentEye} eye...`
-                    }
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Left side: Camera view */}
         <div className="camera-view">
@@ -2010,15 +1972,17 @@ const EyeScan = () => {
         />
       )}
 
-          {/* Voice Bot */}
-          <VoiceBot
-            mode="test"
-            testType="eye-scan"
-            screenContent={{
-              title: 'Eye Scan',
-              description: aiMessage
-            }}
-          />
+          {/* Voice Bot - Hidden during preparation phase to avoid distractions */}
+          {scanPhase !== 'preparation' && (
+            <VoiceBot
+              mode="test"
+              testType="eye-scan"
+              screenContent={{
+                title: 'Eye Scan',
+                description: aiMessage
+              }}
+            />
+          )}
 
       {/* Admin/Developer Tools - Only show in development mode */}
       {(process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') && (

@@ -28,34 +28,78 @@ const VoiceBot = ({
   const speechQueueRef = useRef([])
   const isProcessingRef = useRef(false)
   const screenAnalysisRef = useRef(null)
+  const listeningTimeoutRef = useRef(null)
+  const lastAnswerTimeRef = useRef(null)
 
-  // Initialize voice recognition
+  // Initialize voice recognition with better settings
   useEffect(() => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       recognitionRef.current = new SpeechRecognition()
       recognitionRef.current.continuous = true
-      recognitionRef.current.interimResults = false
+      recognitionRef.current.interimResults = true // Enable interim results for better understanding
       recognitionRef.current.lang = 'en-US'
+      recognitionRef.current.maxAlternatives = 3 // Get multiple interpretations
+      
+      let finalTranscript = ''
       
       recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[event.results.length - 1][0].transcript
-        if (isQuestionMode) {
-          handleAnswer(transcript)
-        } else {
-          handleVoiceCommand(transcript)
+        let interimTranscript = ''
+        
+        // Process all results for better accuracy
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' '
+          } else {
+            interimTranscript += transcript
+          }
+        }
+        
+        // Use final transcript when available, otherwise interim
+        const answerText = finalTranscript.trim() || interimTranscript.trim()
+        
+        if (answerText && isQuestionMode) {
+          // Only process if we have a meaningful answer (at least 2 characters)
+          if (answerText.length >= 2) {
+            handleAnswer(answerText)
+            finalTranscript = '' // Reset for next answer
+          }
+        } else if (answerText && !isQuestionMode) {
+          handleVoiceCommand(answerText)
         }
       }
       
       recognitionRef.current.onerror = (event) => {
         console.error('Speech recognition error:', event.error)
-        setIsListening(false)
+        // Don't stop listening on minor errors - keep trying
+        if (event.error === 'no-speech') {
+          // No speech detected - this is normal, just continue listening
+          return
+        }
+        if (event.error === 'aborted' || event.error === 'network') {
+          setIsListening(false)
+        }
+      }
+      
+      recognitionRef.current.onend = () => {
+        // Auto-restart if we're still in question mode
+        if (isQuestionMode && isListening) {
+          try {
+            recognitionRef.current.start()
+          } catch (error) {
+            // Already started or other error - ignore
+          }
+        }
       }
     }
 
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop()
+      }
+      if (listeningTimeoutRef.current) {
+        clearTimeout(listeningTimeoutRef.current)
       }
     }
   }, [])
@@ -65,7 +109,17 @@ const VoiceBot = ({
     const path = location.pathname
     
     // Auto-activate on testing pages
-    if (path.includes('vision-tests') || path.includes('eye-scan') || path.includes('mini-games')) {
+    if (path.includes('eye-scan')) {
+      setIsActive(true)
+      // Auto-start consultation for eye-scan
+      setTimeout(() => {
+        if (mode === 'test' && testType === 'eye-scan') {
+          startTestQuestions() // Auto-start consultation questions
+        } else {
+          provideWelcomeGuidance()
+        }
+      }, 1000)
+    } else if (path.includes('vision-tests') || path.includes('mini-games')) {
       setIsActive(true)
       setTimeout(() => {
         provideWelcomeGuidance()
@@ -211,26 +265,99 @@ const VoiceBot = ({
       const question = questions[index]
       setCurrentQuestion(question)
       setQuestionIndex(index)
+      
+      // Doctor-like question delivery - no repetitive "I'm listening" messages
       speak(question.question).then(() => {
+        // Silently start listening - no announcement
         setIsListening(true)
+        lastAnswerTimeRef.current = Date.now()
+        
         if (recognitionRef.current) {
-          recognitionRef.current.start()
+          try {
+            recognitionRef.current.start()
+            console.log('Dr. AI: Listening silently for answer...')
+          } catch (error) {
+            console.error('Error starting recognition:', error)
+            // Retry after a brief moment
+            setTimeout(() => {
+              if (recognitionRef.current && isQuestionMode) {
+                try {
+                  recognitionRef.current.start()
+                } catch (retryError) {
+                  console.error('Retry failed:', retryError)
+                }
+              }
+            }, 500)
+          }
         }
+        
+        // Set timeout for unanswered questions (like a real doctor would)
+        if (listeningTimeoutRef.current) {
+          clearTimeout(listeningTimeoutRef.current)
+        }
+        
+        listeningTimeoutRef.current = setTimeout(() => {
+          // If no answer after 10 seconds, gently prompt (doctor-like)
+          if (isListening && isQuestionMode) {
+            const gentlePrompts = [
+              'I\'m still here. Could you please answer the question?',
+              'Take your time, but I\'m ready when you are.',
+              'If you didn\'t hear the question clearly, I can repeat it.'
+            ]
+            const prompt = gentlePrompts[Math.floor(Math.random() * gentlePrompts.length)]
+            speak(prompt).then(() => {
+              // Continue listening
+              if (recognitionRef.current && isQuestionMode) {
+                try {
+                  recognitionRef.current.start()
+                } catch (error) {
+                  console.error('Error restarting after timeout:', error)
+                }
+              }
+            })
+          }
+        }, 10000) // 10 seconds timeout
       })
     } else {
-      // All questions answered
+      // All questions answered - doctor-like conclusion
       setIsQuestionMode(false)
       setCurrentQuestion(null)
-      speak('Thank you for answering. Let\'s continue with the test.')
+      setIsListening(false)
+      if (recognitionRef.current) {
+        recognitionRef.current.stop()
+      }
+      speak('Excellent. I have all the information I need from our consultation. Now let\'s proceed with your eye examination. Please position your face in front of the camera, and I\'ll guide you through the alignment process.')
     }
   }
 
   const getTestQuestions = (type) => {
     const questionSets = {
       'eye-scan': [
-        { question: 'Are you in a well-lit room?', key: 'lighting' },
-        { question: 'Can you see the alignment frame clearly?', key: 'visibility' },
-        { question: 'Are you comfortable and ready to begin?', key: 'ready' }
+        { 
+          question: 'Hello, I\'m Dr. AI. Before we begin your comprehensive eye examination, let me ask you a few questions to better understand your situation. First, are you experiencing any eye discomfort, pain, blurry vision, or any other vision problems today?', 
+          key: 'symptoms',
+          info: 'Understanding current symptoms helps me focus the examination on areas of concern.'
+        },
+        { 
+          question: 'Thank you. Now, do you currently wear glasses or contact lenses? And if so, are you wearing them right now?', 
+          key: 'correctiveLenses',
+          info: 'This helps me understand your baseline vision and interpret the results correctly.'
+        },
+        { 
+          question: 'I see. Have you had any eye surgeries, such as cataract surgery or LASIK, or have you been diagnosed with any eye conditions like glaucoma, diabetic retinopathy, or macular degeneration?', 
+          key: 'history',
+          info: 'Your medical history is crucial for providing accurate and personalized recommendations.'
+        },
+        { 
+          question: 'Good. One more thing - are you in a well-lit room right now? Good lighting is important for getting accurate scan results.', 
+          key: 'lighting',
+          info: 'Proper lighting ensures the camera can capture clear images of your eyes.'
+        },
+        { 
+          question: 'Perfect. I have all the information I need. Now, let\'s begin your eye examination. Please position your face in front of the camera, and I\'ll help you align it properly. Take your time, and let me know when you\'re ready.', 
+          key: 'ready',
+          info: 'Proper positioning ensures we get the best possible images for analysis.'
+        }
       ],
       'myopia': [
         { question: 'Can you read the letters on the screen?', key: 'readability' },
@@ -277,29 +404,134 @@ const VoiceBot = ({
     return welcomes[type] || 'I\'m Dr. AI, and I\'ll be your guide through this vision assessment. Think of this as a comprehensive eye exam, just like visiting my office, but from the comfort of your home.'
   }
 
+  // Natural language understanding for answers - doctor-like interpretation
+  const understandAnswer = (answer, questionKey) => {
+    const lowerAnswer = answer.toLowerCase().trim()
+    
+    // Remove common filler words and phrases
+    const cleanedAnswer = lowerAnswer
+      .replace(/\b(um|uh|er|ah|like|you know|i mean)\b/g, '')
+      .trim()
+    
+    // Yes/No detection with more patterns
+    const yesPatterns = [
+      'yes', 'yeah', 'yep', 'yup', 'sure', 'correct', 'right', 'okay', 'ok', 
+      'affirmative', 'definitely', 'absolutely', 'of course', 'certainly',
+      'i do', 'i am', 'i have', 'i wear', 'i use', 'i\'m wearing', 'i\'m using'
+    ]
+    const noPatterns = [
+      'no', 'nope', 'nah', 'negative', 'not', "don't", "doesn't", "didn't", 
+      'never', 'none', 'nothing', 'no one', 'nobody', "i don't", "i didn't",
+      'i do not', 'i am not', 'i have not', "i haven't", "i'm not"
+    ]
+    
+    const isYes = yesPatterns.some(pattern => cleanedAnswer.includes(pattern))
+    const isNo = noPatterns.some(pattern => cleanedAnswer.includes(pattern))
+    
+    // Check for detailed responses (contains specific information)
+    const hasDetails = cleanedAnswer.length > 15 || 
+      cleanedAnswer.split(' ').length > 3 ||
+      /(glasses|contacts|lenses|surgery|lasik|cataract|glaucoma|diabetic|retinopathy|macular|degeneration|condition|diagnosed|problem|issue|pain|discomfort|blurry|vision|light|bright|dark|room)/i.test(cleanedAnswer)
+    
+    // Check if answer seems meaningful (not just noise)
+    const isMeaningful = cleanedAnswer.length >= 3 && 
+      !cleanedAnswer.match(/^(the|a|an|and|or|but|if|then|that|this|these|those)$/i)
+    
+    return {
+      isYes,
+      isNo,
+      hasDetails,
+      rawAnswer: answer,
+      cleanedAnswer: cleanedAnswer,
+      understood: isYes || isNo || (hasDetails && isMeaningful)
+    }
+  }
+
   const handleAnswer = (answer) => {
+    if (!answer || answer.trim().length < 2) {
+      // Too short or empty - continue listening
+      return
+    }
+    
+    // Clear timeout since we got an answer
+    if (listeningTimeoutRef.current) {
+      clearTimeout(listeningTimeoutRef.current)
+      listeningTimeoutRef.current = null
+    }
+    
     setCurrentAnswer(answer)
     setIsListening(false)
+    lastAnswerTimeRef.current = Date.now()
     
     if (recognitionRef.current) {
       recognitionRef.current.stop()
     }
 
-    // Confirm the answer
-    const confirmations = [
-      'Got it, thank you.',
-      'Understood.',
-      'Perfect, I\'ve noted that.',
-      'Thank you for that information.'
-    ]
-    const confirmation = confirmations[Math.floor(Math.random() * confirmations.length)]
+    console.log('Dr. AI: Received answer:', answer)
     
-    speak(confirmation).then(() => {
-      // Move to next question
+    const currentQ = getTestQuestions(testType)[questionIndex]
+    const understanding = understandAnswer(answer, currentQ?.key)
+    
+    // Doctor-like response based on understanding
+    let response = ''
+    
+    if (!understanding.understood) {
+      // Didn't understand - ask for clarification (doctor-like)
+      response = 'I want to make sure I understand you correctly. Could you please answer that again?'
+      speak(response).then(() => {
+        // Restart listening for clarification
+        setTimeout(() => {
+          setIsListening(true)
+          if (recognitionRef.current) {
+            try {
+              recognitionRef.current.start()
+            } catch (error) {
+              console.error('Error restarting recognition:', error)
+            }
+          }
+        }, 1000)
+      })
+      return
+    }
+    
+    // Doctor-like confirmations based on answer type
+    if (currentQ?.key === 'symptoms') {
+      if (understanding.isNo) {
+        response = 'Good to hear you\'re not experiencing any discomfort. That\'s helpful information.'
+      } else if (understanding.isYes || understanding.hasDetails) {
+        response = 'I understand. I\'ll make note of that and we\'ll keep an eye on it during the examination.'
+      }
+    } else if (currentQ?.key === 'correctiveLenses') {
+      if (understanding.isYes) {
+        response = 'Thank you. Knowing about your corrective lenses helps me interpret your results more accurately.'
+      } else if (understanding.isNo) {
+        response = 'Understood. We\'ll establish your baseline vision today.'
+      }
+    } else if (currentQ?.key === 'history') {
+      if (understanding.isNo) {
+        response = 'That\'s good to know. A clean history is always positive.'
+      } else if (understanding.isYes || understanding.hasDetails) {
+        response = 'I appreciate you sharing that. Your medical history is important for accurate assessment.'
+      }
+    } else if (currentQ?.key === 'lighting') {
+      if (understanding.isYes) {
+        response = 'Perfect. Good lighting ensures we get the most accurate results.'
+      } else if (understanding.isNo) {
+        response = 'If possible, try to improve the lighting in your room. It will help with the accuracy of the scan.'
+      }
+    } else {
+      // Generic doctor-like confirmation
+      response = understanding.hasDetails 
+        ? 'Thank you for that detailed information. I\'ve noted it down.'
+        : 'Understood. Thank you.'
+    }
+    
+    // Speak confirmation and move to next question
+    speak(response).then(() => {
       const nextIndex = questionIndex + 1
       setTimeout(() => {
         askNextQuestion(nextIndex)
-      }, 1000)
+      }, 800) // Slightly longer for natural conversation flow
     })
   }
 
@@ -358,11 +590,8 @@ const VoiceBot = ({
     } else {
       recognitionRef.current.start()
       setIsListening(true)
-      if (isQuestionMode && currentQuestion) {
-        speak('I\'m listening for your answer.')
-      } else {
-        speak('I\'m listening. You can ask me to repeat instructions or say "help" for assistance.')
-      }
+      // Don't speak - just silently start listening (less repetitive)
+      // Visual indicator shows listening state
     }
   }
 
@@ -482,10 +711,12 @@ const VoiceBot = ({
         <div className="voice-bot-instructions">
           <p>
             {isListening 
-              ? "I'm listening... speak naturally!" 
+              ? "Listening..." 
               : isSpeaking 
-              ? "I'm speaking to you..."
-              : "Tap the microphone and ask me anything about your vision test!"
+              ? "Speaking..."
+              : isQuestionMode && currentQuestion
+              ? "Please answer the question above."
+              : "Ready to help with your vision test."
             }
           </p>
         </div>
