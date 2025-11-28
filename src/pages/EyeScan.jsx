@@ -1558,8 +1558,11 @@ const EyeScan = () => {
                 }
                 
                 // Update alignment status - very lenient for instant detection
-                // Consider aligned if face is detected and roughly centered
+                // Consider aligned if face is detected and both eyes are visible
+                // No need to force users to center - we adapt to their position!
                 const isRoughlyAligned = metrics.alignment && (
+                  // If both eyes are detected, we're good to go - no fixed position required!
+                  (bothEyesDetected && metrics.faceWidth > 0.2 && metrics.faceHeight > 0.2) ||
                   metrics.alignment.isWellAligned || 
                   (Math.abs(metrics.alignment.horizontalOffset) < 0.4 && 
                    Math.abs(metrics.alignment.verticalOffset) < 0.4) ||
@@ -1598,15 +1601,16 @@ const EyeScan = () => {
             {/* Canvas reserved for computer-vision processing (eye detection, brightness, etc.) */}
             <canvas ref={canvasRef} className="scan-overlay" />
 
-          {/* Face alignment frame - adapts to actual face size */}
-          {faceMetrics && faceMetrics.faceWidth && (
+          {/* Face alignment frame - adapts to actual face size and position */}
+          {faceMetrics && faceMetrics.faceWidth && faceMetrics.faceCenter && (
             <div
               className={`alignment-rectangle ${isAligned && faceDetected ? 'aligned' : ''}`}
               style={{
                 width: `${Math.min(90, Math.max(50, faceMetrics.faceWidth * 100))}%`,
                 height: `${Math.min(80, Math.max(40, faceMetrics.faceHeight * 100))}%`,
-                left: '50%',
-                top: '50%',
+                // Center on actual face position, not screen center - fully adaptive!
+                left: `${faceMetrics.faceCenter.x * 100}%`,
+                top: `${faceMetrics.faceCenter.y * 100}%`,
                 transform: 'translate(-50%, -50%)',
                 transition: 'all 0.3s ease'
               }}
