@@ -31,6 +31,10 @@ import TestAI from './pages/TestAI'
 import BackendTest from './pages/BackendTest'
 import SplashScreen from './pages/SplashScreen'
 import FAQ from './pages/FAQ'
+import OpticiansDashboard from './pages/OpticiansDashboard'
+import ClinicLogin from './pages/ClinicLogin'
+import ClinicSignup from './pages/ClinicSignup'
+import UserTypeSelection from './pages/UserTypeSelection'
 import Layout from './components/Layout'
 import InstallPrompt from './components/InstallPrompt'
 
@@ -104,7 +108,11 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/clinic-login" element={<ClinicLogin />} />
+            <Route path="/clinic-signup" element={<ClinicSignup />} />
+            <Route path="/user-type-selection" element={<UserTypeSelection />} />
             <Route path="/verify" element={<Verify />} />
+            <Route path="/opticians-dashboard" element={<OpticiansDashboard />} />
             <Route path="/payment-confirmation" element={<PaymentConfirmation />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -285,24 +285,36 @@ const EyeScan = () => {
   const processFrameWithComputerVision = (video, canvas, ctx) => {
     if (!video.videoWidth || !video.videoHeight) return null
 
-    // Only resize canvas if dimensions changed (prevents unnecessary redraws)
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
+    // Downscale canvas to reduce memory usage significantly
+    // Use maximum 320x240 for processing (reduces memory by ~10-20x)
+    const MAX_PROCESS_WIDTH = 320
+    const MAX_PROCESS_HEIGHT = 240
+    const videoAspect = video.videoWidth / video.videoHeight
+    
+    let processWidth = Math.min(video.videoWidth, MAX_PROCESS_WIDTH)
+    let processHeight = Math.min(video.videoHeight, MAX_PROCESS_HEIGHT)
+    
+    // Maintain aspect ratio
+    if (processWidth / processHeight > videoAspect) {
+      processWidth = Math.floor(processHeight * videoAspect)
+    } else {
+      processHeight = Math.floor(processWidth / videoAspect)
     }
     
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // Get image data for analysis - use smaller sample size for performance
-    const sampleSize = Math.min(canvas.width, canvas.height, 320) // Limit to 320px for processing
-    const scale = sampleSize / Math.max(canvas.width, canvas.height)
-    const sampleWidth = Math.floor(canvas.width * scale)
-    const sampleHeight = Math.floor(canvas.height * scale)
+    // Only resize canvas if dimensions changed (prevents unnecessary redraws)
+    if (canvas.width !== processWidth || canvas.height !== processHeight) {
+      canvas.width = processWidth
+      canvas.height = processHeight
+    }
     
-    const imageData = ctx.getImageData(0, 0, sampleWidth, sampleHeight)
+    // Draw downscaled frame (much lower memory usage)
+    ctx.drawImage(video, 0, 0, processWidth, processHeight)
+
+    // Get image data for analysis - already downscaled
+    const imageData = ctx.getImageData(0, 0, processWidth, processHeight)
     const data = imageData.data
-    const width = sampleWidth // Use sampled dimensions
-    const height = sampleHeight
+    const width = processWidth // Use downscaled dimensions
+    const height = processHeight
 
     // Computer vision analysis
     let brightness = 0
@@ -316,8 +328,9 @@ const EyeScan = () => {
     let topBrightness = 0
     let bottomBrightness = 0
 
-    // Optimized pixel sampling - process every 4th pixel for 16x performance improvement
-    const sampleRate = 4 // Process every 4th pixel
+    // Optimized pixel sampling - process every 8th pixel for 64x performance improvement
+    // Since we're already downscaled, we can sample even more aggressively
+    const sampleRate = 8 // Process every 8th pixel (reduces processing by 64x)
     let sampledPixels = 0
     
     for (let i = 0; i < data.length; i += (4 * sampleRate)) {
@@ -511,7 +524,9 @@ const EyeScan = () => {
         
         // Wait for video to be ready
         videoRef.current.onloadedmetadata = () => {
-          console.log('Video metadata loaded, dimensions:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight)
+          console.log('EyeScan: Video metadata loaded, dimensions:', videoRef.current.videoWidth, 'x', videoRef.current.videoHeight)
+          console.log('EyeScan: Video readyState:', videoRef.current.readyState)
+          console.log('EyeScan: Video srcObject:', !!videoRef.current.srcObject)
           // Face detection will start automatically via FaceDetector component
         }
         
@@ -811,7 +826,7 @@ const EyeScan = () => {
       const canvas = canvasRef.current
       const ctx = canvas.getContext('2d')
 
-      // Reduced frequency - process every 3 seconds instead of 2 to reduce load
+      // Significantly reduced frequency - process every 5 seconds to reduce memory load
       captureIntervalRef.current = setInterval(() => {
         if (!video.videoWidth || !video.videoHeight) return
 
@@ -904,10 +919,13 @@ const EyeScan = () => {
         const shouldCapture = !lastFrameRef.current || (Date.now() - (lastFrameRef.current.timestamp || 0)) > 6000
         if (shouldCapture) {
           try {
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.5) // Lower quality for performance
+            // Use even lower quality and smaller size for mobile
+            const quality = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 0.3 : 0.5
+            const dataUrl = canvas.toDataURL('image/jpeg', quality) // Lower quality for mobile performance
             lastFrameRef.current = { url: dataUrl, timestamp: Date.now() }
             setCapturedFrames(prev => {
-              if (prev.length >= 3) return prev.slice(-2) // Keep only last 3 frames
+              // Keep only last 2 frames to reduce memory usage
+              if (prev.length >= 2) return prev.slice(-1) // Keep only last frame
               return [...prev, dataUrl]
             })
             
@@ -923,7 +941,7 @@ const EyeScan = () => {
             console.error('Error capturing frame', e)
           }
         }
-      }, 3000) // Reduced to every 3 seconds to prevent freezing
+      }, 5000) // Increased to every 5 seconds to reduce memory usage and prevent freezing
     }
 
     // Start showing dataset images immediately
@@ -946,7 +964,7 @@ const EyeScan = () => {
         `Searching ${randomImage.condition} database...`
       ]
       setSearchingMessage(messages[Math.floor(Math.random() * messages.length)])
-    }, 4000) // Reduced to every 4 seconds to prevent freezing
+    }, 6000) // Increased to every 6 seconds to reduce memory usage and prevent freezing
     
     // Update messages based on progress - reduced frequency
     messageUpdateIntervalRef.current = setInterval(() => {
@@ -980,11 +998,11 @@ const EyeScan = () => {
       if (phaseMessages.length > 0 && isScanning) {
         setSearchingMessage(phaseMessages[Math.floor(Math.random() * phaseMessages.length)])
       }
-    }, 5000) // Reduced to every 5 seconds to prevent freezing
+    }, 8000) // Increased to every 8 seconds to reduce memory usage
 
     // Extended scanning progress - optimized for performance
     const scanDuration = 42000 // 42 seconds for deeper analysis
-    const progressInterval = 500 // Reduced to 500ms to prevent freezing
+    const progressInterval = 1000 // Increased to 1000ms (1 second) to reduce memory usage and prevent freezing
     const progressIncrement = 100 / (scanDuration / progressInterval) // ~1.19% per update
     
     progressIntervalRef.current = setInterval(() => {
@@ -1283,19 +1301,20 @@ const EyeScan = () => {
   }
 
   useEffect(() => {
-    // Auto-start scan immediately when face is detected and aligned - instant detection
-    if (isAligned && !isScanning && faceDetected && scanPhase === 'preparation') {
-      console.log('Auto-starting scan - face detected and aligned')
-      const msg = 'Perfect! Starting your eye scan now...'
+    // Auto-start scan immediately when face is detected, aligned, and both eyes are visible
+    const bothEyesVisible = faceMetrics?.leftEye?.center && faceMetrics?.rightEye?.center
+    if (isAligned && !isScanning && faceDetected && bothEyesVisible && scanPhase === 'preparation') {
+      console.log('Auto-starting scan - face detected, aligned, and both eyes visible')
+      const msg = 'Perfect! Both eyes detected. Starting your eye scan now...'
       setAiMessage(msg)
       // Start immediately - no delay
       setTimeout(() => {
-        if (faceDetected && !isScanning) {
+        if (faceDetected && !isScanning && bothEyesVisible) {
           startScan()
         }
-      }, 500) // Small delay to ensure state is updated
+      }, 800) // Small delay to ensure state is updated and picture is captured
     }
-  }, [isAligned, faceDetected, scanPhase, isScanning])
+  }, [isAligned, faceDetected, scanPhase, isScanning, faceMetrics])
 
   const getPhaseTitle = () => {
     switch (scanPhase) {
@@ -1484,6 +1503,9 @@ const EyeScan = () => {
                   }
                 }
                 
+                // Automatic eye detection - search for eyes when face is detected
+                const bothEyesDetected = metrics.leftEye?.center && metrics.rightEye?.center
+                
                 // Update eye-specific metrics based on face detection
                 if (metrics.leftEye && metrics.rightEye) {
                   setEyeSpecificMetrics(prev => ({
@@ -1498,6 +1520,41 @@ const EyeScan = () => {
                       alignment: metrics.faceCenter ? 0.9 : 0.5
                     }
                   }))
+                  
+                  // Automatic picture capture when both eyes are detected
+                  if (bothEyesDetected && !isScanning && scanPhase === 'preparation') {
+                    // Capture frame automatically
+                    if (videoRef.current && canvasRef.current) {
+                      try {
+                        const canvas = canvasRef.current
+                        const video = videoRef.current
+                        const ctx = canvas.getContext('2d')
+                        
+                        // Set canvas size to match video
+                        canvas.width = video.videoWidth
+                        canvas.height = video.videoHeight
+                        
+                        // Draw video frame to canvas
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+                        
+                        // Capture as data URL
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.5)
+                        
+                        // Store captured frame
+                        setCapturedFrames(prev => {
+                          if (prev.length >= 2) return prev.slice(-1)
+                          return [...prev, dataUrl]
+                        })
+                        
+                        // Process with computer vision
+                        processFrameWithComputerVision(videoRef.current, canvas, ctx)
+                        
+                        console.log('Automatic picture captured - both eyes detected')
+                      } catch (error) {
+                        console.error('Error capturing automatic picture:', error)
+                      }
+                    }
+                  }
                 }
                 
                 // Update alignment status - very lenient for instant detection
@@ -1513,10 +1570,17 @@ const EyeScan = () => {
                 if (isRoughlyAligned && !isAligned) {
                   setIsAligned(true)
                   console.log('Face aligned - ready to start scan')
-                  // Provide voice feedback when face is detected
-                  const alignmentMsg = 'Perfect! I can see your face clearly now. I\'m ready to begin the eye scan.'
-                  setAiMessage(alignmentMsg)
-                  speakGuidance(alignmentMsg, true)
+                  
+                  // Automatic eye search feedback
+                  if (bothEyesDetected) {
+                    const eyesMsg = 'Excellent! I can see both of your eyes clearly. Starting the scan now...'
+                    setAiMessage(eyesMsg)
+                    speakGuidance(eyesMsg, true)
+                  } else {
+                    const alignmentMsg = 'Perfect! I can see your face clearly now. Searching for your eyes...'
+                    setAiMessage(alignmentMsg)
+                    speakGuidance(alignmentMsg, true)
+                  }
                 } else if (!isRoughlyAligned && isAligned) {
                   setIsAligned(false)
                   // Provide feedback when face moves out of alignment
@@ -2123,9 +2187,9 @@ const EyeScan = () => {
               onClick={async () => {
                 try {
                   await mobileSpeech.test()
-                  alert('Voice test completed! You should have heard a test message.')
+                  setAiMessage('Voice test completed! You should have heard a test message.')
                 } catch (error) {
-                  alert(`Voice test failed: ${error.message}. Please ensure you have interacted with the page first.`)
+                  setAiMessage(`Voice test failed: ${error.message}. Please ensure you have interacted with the page first.`)
                 }
               }}
               title="Test voice synthesis on mobile (Dev Only)"

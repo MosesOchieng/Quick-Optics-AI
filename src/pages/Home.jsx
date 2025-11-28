@@ -2,11 +2,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 import SplashScreen from './SplashScreen'
+import PatientAuthModal from '../components/PatientAuthModal'
 import './Home.css'
 
 const Home = () => {
   const [isVisible, setIsVisible] = useState(false)
   const [showSplash, setShowSplash] = useState(false)
+  const [showAuthModal, setShowAuthModal] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -116,14 +118,17 @@ const Home = () => {
 
 
             <div className="hero-actions">
-              <Link to="/start-test" className="btn btn-primary">
-                <span>Start Free Test</span>
+              <button 
+                className="btn btn-primary"
+                onClick={() => setShowAuthModal(true)}
+              >
+                <span>Get Started</span>
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
-              </Link>
-              <Link to="/dashboard" className="btn btn-secondary">
-                <span>Get Started</span>
+              </button>
+              <Link to="/clinic-login" className="btn btn-outline">
+                <span>Optician/Clinic Access</span>
               </Link>
               <Link to="/how-it-works" className="btn btn-outline">
                 <span>How It Works</span>
@@ -309,6 +314,12 @@ const Home = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Patient Auth Modal */}
+      <PatientAuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+      />
 
       {/* Features Section */}
       <section className="features">

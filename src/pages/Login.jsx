@@ -19,16 +19,11 @@ const Login = () => {
   const [serverError, setServerError] = useState('')
 
   useEffect(() => {
-    // Show splash for 2 seconds on first visit
-    const hasSeenSplash = localStorage.getItem('hasSeenPreAuthSplash')
-    if (!hasSeenSplash) {
-      const timer = setTimeout(() => {
-        setShowSplash(false)
-      }, 2000)
-      return () => clearTimeout(timer)
-    } else {
+    // Show splash for 3 seconds before showing login form
+    const timer = setTimeout(() => {
       setShowSplash(false)
-    }
+    }, 3000)
+    return () => clearTimeout(timer)
   }, [])
 
   const {
@@ -103,7 +98,7 @@ const Login = () => {
         >
           <div className="auth-header">
             <div className="auth-logo">
-              <span className="logo-icon">👁️</span>
+              <img src="/Logo.jpeg" alt="Quick Optics AI" className="auth-logo-image" />
               <h1>Quick Optics AI</h1>
             </div>
             <h2>{userType === 'clinic' ? 'Clinic Portal' : 'Welcome Back'}</h2>

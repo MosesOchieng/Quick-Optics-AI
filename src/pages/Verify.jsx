@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import api from '../utils/api'
 import './Auth.css'
 
 const Verify = () => {
@@ -69,37 +70,18 @@ const Verify = () => {
     setLoading(true)
 
     try {
-      // TODO: Replace with actual API call
-      const response = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          code: verificationCode
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        localStorage.setItem('auth_token', data.token)
-        localStorage.setItem('user', JSON.stringify(data.user))
-        navigate('/dashboard')
-      } else {
-        const errorData = await response.json()
-        setError(errorData.message || 'Invalid verification code. Please try again.')
-        setCode(['', '', '', '', '', ''])
-        document.getElementById('code-0').focus()
-      }
+      const response = await api.verifyEmail(email, verificationCode)
+      
+      localStorage.setItem('auth_token', response.token)
+      localStorage.setItem('user', JSON.stringify(response.user))
+      navigate('/dashboard')
     } catch (err) {
-      // Fallback for development - accept any 6-digit code
-      console.log('Verification attempt:', { email, code: verificationCode })
-      if (verificationCode.length === 6) {
-        localStorage.setItem('auth_token', 'dev_token_' + Date.now())
-        localStorage.setItem('user', JSON.stringify({ email, name: 'User', verified: true }))
-        navigate('/dashboard')
-      } else {
-        setError('Please enter a valid 6-digit code')
-      }
+      setError(err.message || 'Invalid verification code. Please try again.')
+      setCode(['', '', '', '', '', ''])
+      setTimeout(() => {
+        const firstInput = document.getElementById('code-0')
+        if (firstInput) firstInput.focus()
+      }, 100)
     } finally {
       setLoading(false)
     }
@@ -109,14 +91,10 @@ const Verify = () => {
     if (resendCooldown > 0) return
 
     try {
-      await fetch('/api/auth/resend-verification', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
+      await api.resendVerification(email)
       setResendCooldown(60)
     } catch (err) {
-      console.log('Resend verification code')
+      console.error('Resend verification error:', err)
       setResendCooldown(60)
     }
   }
@@ -131,7 +109,7 @@ const Verify = () => {
         >
           <div className="auth-header">
             <div className="auth-logo">
-              <span className="logo-icon">👁️</span>
+              <img src="/Logo.jpeg" alt="Quick Optics AI" className="auth-logo-image" />
               <h1>Quick Optics AI</h1>
             </div>
             <h2>Verify Your Email</h2>

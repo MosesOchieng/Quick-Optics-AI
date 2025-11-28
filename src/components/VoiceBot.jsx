@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { speakWithElevenLabs } from '../utils/elevenLabs'
 import mobileSpeech from '../utils/mobileSpeech'
@@ -17,6 +17,7 @@ const VoiceBot = ({
   screenContent = null // Content to read from screen
 }) => {
   const location = useLocation()
+  const navigate = useNavigate()
   const [isActive, setIsActive] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -881,6 +882,25 @@ const VoiceBot = ({
       return
     }
     
+    // Auto-advance on dashboard consultation - detect "yes" responses
+    if (location.pathname === '/dashboard') {
+      const yesPatterns = ['yes', 'yeah', 'yep', 'sure', 'okay', 'ok', 'alright', 'ndiyo', 'ndio', 'sawa', 'haya', 'kweli']
+      if (yesPatterns.some(pattern => lowerCommand.includes(pattern))) {
+        // Check if user is responding to consultation prompt
+        if (lowerCommand.includes('consultation') || lowerCommand.includes('assessment') || 
+            lowerCommand.includes('ready') || lowerCommand.includes('start') ||
+            lowerCommand.includes('ushauri') || lowerCommand.includes('tayari') || lowerCommand.includes('anza')) {
+          speak(language === 'sw'
+            ? 'Vizuri sana! Nitaongoza kwa ushauri wa awali, kisha tutaanza na mtihani wako wa macho.'
+            : 'Perfect! I\'ll guide you through the pre-test consultation, then we\'ll start your eye examination.')
+          setTimeout(() => {
+            navigate('/pre-test-consultation')
+          }, 2000)
+          return
+        }
+      }
+    }
+    
     // More conversational responses like ChatGPT - bilingual support
     if (lowerCommand.includes('hello') || lowerCommand.includes('hi') || lowerCommand.includes('jambo') || lowerCommand.includes('habari')) {
       if (language === 'sw') {
@@ -920,9 +940,19 @@ const VoiceBot = ({
         : 'Your privacy is absolutely protected. All image processing happens right here on your device when possible. We never share your health information without your explicit permission, and all data is encrypted.')
     } else if (lowerCommand.includes('ready') || lowerCommand.includes('start') || lowerCommand.includes('begin') ||
                lowerCommand.includes('tayari') || lowerCommand.includes('anza') || lowerCommand.includes('anza')) {
-      speak(language === 'sw'
-        ? 'Vizuri sana! Nasikia uko tayari kuanza. Tuanze kwa kuhakikisha kuwa uso wako umewekwa sawa kwenye kamera. Angalia moja kwa moja kwenye skrini yako na nitakuongoza katika kuweka sawa.'
-        : 'Wonderful! I can hear you\'re ready to begin. Let\'s start by making sure your face is positioned correctly in the camera. Look directly at your screen and I\'ll guide you through the alignment.')
+      // Auto-navigate if on dashboard
+      if (location.pathname === '/dashboard') {
+        speak(language === 'sw'
+          ? 'Vizuri sana! Nitaongoza kwa ushauri wa awali, kisha tutaanza na mtihani wako wa macho.'
+          : 'Perfect! I\'ll guide you through the pre-test consultation, then we\'ll start your eye examination.')
+        setTimeout(() => {
+          navigate('/pre-test-consultation')
+        }, 2000)
+      } else {
+        speak(language === 'sw'
+          ? 'Vizuri sana! Nasikia uko tayari kuanza. Tuanze kwa kuhakikisha kuwa uso wako umewekwa sawa kwenye kamera. Angalia moja kwa moja kwenye skrini yako na nitakuongoza katika kuweka sawa.'
+          : 'Wonderful! I can hear you\'re ready to begin. Let\'s start by making sure your face is positioned correctly in the camera. Look directly at your screen and I\'ll guide you through the alignment.')
+      }
     } else if (lowerCommand.includes('repeat') || lowerCommand.includes('again') ||
                lowerCommand.includes('rudia') || lowerCommand.includes('tena')) {
       if (currentQuestion) {

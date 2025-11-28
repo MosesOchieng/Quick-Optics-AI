@@ -122,33 +122,6 @@ const Dashboard = () => {
               >
                 Start Consultation
               </button>
-              
-              {/* Development Test Links - Only show in development */}
-              {(process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') && (
-                <>
-                  <button 
-                    className="btn btn-outline consultation-btn"
-                    onClick={() => navigate('/test-ai')}
-                    style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
-                  >
-                    🧪 Test AI System
-                  </button>
-                  <button 
-                    className="btn btn-outline consultation-btn"
-                    onClick={() => navigate('/eye-scan')}
-                    style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
-                  >
-                    🔥 See DITP Loader
-                  </button>
-                  <button 
-                    className="btn btn-outline consultation-btn"
-                    onClick={() => navigate('/backend-test')}
-                    style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem 1rem' }}
-                  >
-                    🏥 Test Backend
-                  </button>
-                </>
-              )}
             </div>
           </div>
         </motion.div>

@@ -95,6 +95,13 @@ export const api = {
     })
   },
 
+  async clinicSignup(clinicData) {
+    return apiRequest('/auth/clinic-signup', {
+      method: 'POST',
+      body: clinicData
+    })
+  },
+
   async verifyEmail(email, code) {
     return apiRequest('/auth/verify', {
       method: 'POST',
@@ -111,6 +118,13 @@ export const api = {
 
   async requestOTP(email) {
     return apiRequest('/auth/request-otp', {
+      method: 'POST',
+      body: { email }
+    })
+  },
+
+  async resendVerification(email) {
+    return apiRequest('/auth/resend-verification', {
       method: 'POST',
       body: { email }
     })

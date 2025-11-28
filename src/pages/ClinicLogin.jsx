@@ -8,7 +8,7 @@ import PreAuthSplash from './PreAuthSplash'
 import { useFormValidation } from '../utils/validation'
 import './Auth.css'
 
-const Signup = () => {
+const ClinicLogin = () => {
   const navigate = useNavigate()
   const [showSplash, setShowSplash] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -17,16 +17,11 @@ const Signup = () => {
   const [serverError, setServerError] = useState('')
 
   useEffect(() => {
-    // Show splash for 2 seconds on first visit
-    const hasSeenSplash = localStorage.getItem('hasSeenPreAuthSplash')
-    if (!hasSeenSplash) {
-      const timer = setTimeout(() => {
-        setShowSplash(false)
-      }, 2000)
-      return () => clearTimeout(timer)
-    } else {
+    // Show splash for 3 seconds before showing login form
+    const timer = setTimeout(() => {
       setShowSplash(false)
-    }
+    }, 3000)
+    return () => clearTimeout(timer)
   }, [])
 
   const {
@@ -37,15 +32,8 @@ const Signup = () => {
     handleBlur,
     validateAll
   } = useFormValidation({
-    name: '',
     email: '',
-    password: '',
-    confirmPassword: ''
-  }, {
-    confirmPassword: {
-      required: true,
-      message: 'Please confirm your password'
-    }
+    password: ''
   })
 
   const handleSubmit = async (e) => {
@@ -53,40 +41,38 @@ const Signup = () => {
     setServerError('')
     setShowSuccess(false)
 
-    // Validate all fields
     if (!validateAll()) {
-      return
-    }
-
-    // Check password match
-    if (formData.password !== formData.confirmPassword) {
-      setServerError('Passwords do not match')
-      return
-    }
-
-    // Additional validation for confirmPassword
-    if (!formData.confirmPassword) {
-      setServerError('Please confirm your password')
       return
     }
 
     setLoading(true)
 
     try {
-      const response = await api.signup(formData.name, formData.email, formData.password)
+      // Use clinic-specific endpoint if available, otherwise use regular login
+      const response = await api.login(formData.email, formData.password)
       
-      // Show success message
-      setSuccessMessage('Account created! Please verify your email.')
+      // Verify this is a clinic account
+      if (response.user?.userType !== 'clinic' && response.user?.userType !== 'optometrist') {
+        setServerError('This account is not registered as a clinic. Please use patient login.')
+        setLoading(false)
+        return
+      }
+      
+      localStorage.setItem('auth_token', response.token)
+      localStorage.setItem('user', JSON.stringify(response.user))
+      localStorage.setItem('user_data', JSON.stringify(response.user))
+      localStorage.setItem('user_type', 'clinic')
+      
+      setSuccessMessage(`Welcome back, ${response.user?.clinicName || response.user?.name || 'Clinic'}!`)
       setShowSuccess(true)
       
-      // Navigate to verification page after a short delay
       setTimeout(() => {
-        navigate('/verify', { state: { email: formData.email } })
+        navigate('/opticians-dashboard')
       }, 1500)
     } catch (err) {
-      const errorMessage = err.message || 'Signup failed. Please try again.'
+      const errorMessage = err.message || 'Login failed. Please check your email and password.'
       setServerError(errorMessage)
-      console.error('Signup error:', err)
+      console.error('Clinic login error:', err)
     } finally {
       setLoading(false)
     }
@@ -118,8 +104,11 @@ const Signup = () => {
               <img src="/Logo.jpeg" alt="Quick Optics AI" className="auth-logo-image" />
               <h1>Quick Optics AI</h1>
             </div>
-            <h2>Create Your Account</h2>
-            <p>Start your vision health journey today</p>
+            <h2>Clinic Portal Login</h2>
+            <p>Access your clinic dashboard and manage patient screenings</p>
+            <div className="clinic-badge">
+              <span>👨‍⚕️</span> Clinic/Optometrist Access
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
@@ -134,30 +123,17 @@ const Signup = () => {
             )}
 
             <FormInput
-              type="text"
-              name="name"
-              label="Full Name"
-              value={formData.name}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              placeholder="John Doe"
-              required
-              error={errors.name}
-              touched={touched.name}
-            />
-
-            <FormInput
               type="email"
               name="email"
-              label="Email Address"
+              label="Clinic Email Address"
               value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="you@example.com"
+              placeholder="clinic@example.com"
               required
               error={errors.email}
               touched={touched.email}
-              hint="We'll send a verification code to this email"
+              hint="Use the email registered for your clinic"
               showEmailSuggestions
             />
 
@@ -172,20 +148,6 @@ const Signup = () => {
               required
               error={errors.password}
               touched={touched.password}
-              hint="At least 8 characters with uppercase, lowercase, and number"
-            />
-
-            <FormInput
-              type="password"
-              name="confirmPassword"
-              label="Confirm Password"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              onBlur={handleBlur}
-              placeholder="••••••••"
-              required
-              error={errors.confirmPassword}
-              touched={touched.confirmPassword}
             />
 
             <button
@@ -193,15 +155,20 @@ const Signup = () => {
               className="btn btn-primary btn-full"
               disabled={loading || Object.keys(errors).some(key => errors[key])}
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Signing in...' : 'Login to Clinic Portal'}
             </button>
           </form>
 
           <div className="auth-footer">
             <p>
-              Already have an account?{' '}
+              Don't have a clinic account?{' '}
+              <Link to="/clinic-signup" className="auth-link">
+                Register your clinic
+              </Link>
+            </p>
+            <p style={{ marginTop: '1rem' }}>
               <Link to="/login" className="auth-link">
-                Sign in
+                Patient Login
               </Link>
             </p>
           </div>
@@ -211,5 +178,5 @@ const Signup = () => {
   )
 }
 
-export default Signup
+export default ClinicLogin
 

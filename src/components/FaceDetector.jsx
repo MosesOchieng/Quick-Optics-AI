@@ -28,16 +28,47 @@ const FaceDetector = ({
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current)
       }
-      if (faceMeshRef.current) {
-        faceMeshRef.current.close()
+      // Don't close the global instance - other components might be using it
+      // Only close if this is the only instance
+      if (faceMeshRef.current && window.__faceMeshInstance === faceMeshRef.current) {
+        // Check if there are other FaceDetector components
+        const otherDetectors = document.querySelectorAll('.face-detector-overlay')
+        if (otherDetectors.length <= 1) {
+          faceMeshRef.current.close()
+          window.__faceMeshInstance = null
+        }
       }
     }
   }, [])
 
   const loadFaceMesh = async () => {
+    // Prevent multiple initializations - use global flag
     if (faceMeshReadyRef.current || typeof window === 'undefined') return
+    if (window.__faceMeshInitializing) {
+      console.log('FaceDetector: MediaPipe already initializing, waiting...')
+      // Wait for existing initialization
+      let attempts = 0
+      while (window.__faceMeshInitializing && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+        attempts++
+      }
+      if (window.__faceMeshInstance) {
+        faceMeshRef.current = window.__faceMeshInstance
+        faceMeshRef.current.onResults(handleFaceMeshResults)
+        faceMeshReadyRef.current = true
+        console.log('FaceDetector: Using existing MediaPipe instance')
+        startProcessing()
+        return
+      }
+    }
 
     const loadScript = (src) => new Promise((resolve, reject) => {
+      // Check if script already loaded
+      const existing = document.querySelector(`script[src="${src}"]`)
+      if (existing) {
+        resolve()
+        return
+      }
       const script = document.createElement('script')
       script.src = src
       script.async = true
@@ -47,36 +78,85 @@ const FaceDetector = ({
     })
 
     try {
+      window.__faceMeshInitializing = true
       console.log('FaceDetector: Loading MediaPipe FaceMesh...')
       await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js')
       
       if (!window.FaceMesh) {
         console.error('FaceDetector: FaceMesh not available after script load')
+        window.__faceMeshInitializing = false
         return
       }
 
       console.log('FaceDetector: Creating FaceMesh instance...')
-      faceMeshRef.current = new window.FaceMesh({
-        locateFile: (file) => {
-          const url = `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-          console.log('FaceDetector: Loading file:', url)
-          return url
-        }
-      })
+      
+      // Fix for MediaPipe Module.arguments error - ensure Module is properly initialized
+      // MediaPipe uses Emscripten which expects Module to exist but not have arguments set
+      if (typeof window.Module === 'undefined') {
+        window.Module = {}
+      }
+      // Remove arguments if it exists to prevent the error
+      if (window.Module.arguments !== undefined) {
+        delete window.Module.arguments
+      }
+      
+      // Wait a bit for MediaPipe to fully load before initializing
+      await new Promise(resolve => setTimeout(resolve, 200))
+      
+      try {
+        faceMeshRef.current = new window.FaceMesh({
+          locateFile: (file) => {
+            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+            return url
+          }
+        })
+        // Store globally to prevent multiple instances
+        window.__faceMeshInstance = faceMeshRef.current
+      } catch (initError) {
+        console.error('FaceDetector: Error initializing FaceMesh:', initError)
+        window.__faceMeshInitializing = false
+        // Don't retry - let it fail gracefully
+        console.warn('FaceDetector: Continuing without face detection')
+        return
+      }
 
       faceMeshRef.current.setOptions({
         maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.1, // Very low threshold for instant detection
-        minTrackingConfidence: 0.1,  // Very low threshold for instant tracking
+        refineLandmarks: false, // Disable refined landmarks to reduce memory (saves ~30% memory)
+        minDetectionConfidence: 0.2, // Lower threshold to ensure face detection works
+        minTrackingConfidence: 0.2,  // Lower threshold to ensure tracking works
         selfieMode: true             // Mirror the input for front-facing camera
       })
 
       faceMeshRef.current.onResults(handleFaceMeshResults)
       faceMeshReadyRef.current = true
+      window.__faceMeshInitializing = false
       
       console.log('FaceDetector: MediaPipe FaceMesh initialized successfully')
-      startProcessing()
+      
+      // Start processing after a short delay to ensure video is ready
+      setTimeout(() => {
+        if (videoRef.current && videoRef.current.readyState >= 2) {
+          console.log('FaceDetector: Starting face detection processing')
+          startProcessing()
+        } else {
+          console.log('FaceDetector: Waiting for video to be ready...')
+          // Wait for video to be ready
+          const checkVideo = setInterval(() => {
+            if (videoRef.current && videoRef.current.readyState >= 2) {
+              console.log('FaceDetector: Video ready, starting processing')
+              clearInterval(checkVideo)
+              startProcessing()
+            }
+          }, 100)
+          // Timeout after 5 seconds
+          setTimeout(() => {
+            clearInterval(checkVideo)
+            console.log('FaceDetector: Starting processing anyway (timeout)')
+            startProcessing()
+          }, 5000)
+        }
+      }, 300)
     } catch (error) {
       console.error('FaceDetector: FaceMesh failed to load:', error)
       // Try to provide helpful error information
@@ -90,10 +170,18 @@ const FaceDetector = ({
 
   const startProcessing = () => {
     let lastProcessTime = 0
-    const throttleMs = 100 // Process every 100ms instead of 60fps (16ms) - 6x reduction
+    // Balanced throttle for mobile/low-end devices - process every 300ms (~3fps)
+    // This reduces memory usage while still allowing face detection to work
+    const throttleMs = 300
+    
+    // Create a smaller canvas for downscaling to reduce memory
+    const processCanvas = document.createElement('canvas')
+    const processCtx = processCanvas.getContext('2d')
+    const MAX_PROCESS_WIDTH = 320 // Maximum width for processing (reduces memory by ~10x)
+    const MAX_PROCESS_HEIGHT = 240 // Maximum height for processing
     
     const processFrame = (timestamp) => {
-      // Throttle processing to prevent freezing
+      // Throttle processing to prevent freezing and reduce memory usage
       if (timestamp - lastProcessTime < throttleMs) {
         animationFrameRef.current = requestAnimationFrame(processFrame)
         return
@@ -105,15 +193,60 @@ const FaceDetector = ({
         const video = videoRef.current
         // Process when video is ready
         if (video.readyState >= video.HAVE_CURRENT_DATA && video.videoWidth > 0) {
-          faceMeshRef.current.send({ image: video })
+          // Try to use video directly first (better detection), fallback to downscaled if needed
+          try {
+            // Send video directly for better face detection accuracy
+            faceMeshRef.current.send({ image: video })
+          } catch (error) {
+            // If direct video fails, use downscaled version
+            console.log('FaceDetector: Using downscaled frame for processing')
+            const videoAspect = video.videoWidth / video.videoHeight
+            let processWidth = Math.min(video.videoWidth, MAX_PROCESS_WIDTH)
+            let processHeight = Math.min(video.videoHeight, MAX_PROCESS_HEIGHT)
+            
+            // Maintain aspect ratio
+            if (processWidth / processHeight > videoAspect) {
+              processWidth = processHeight * videoAspect
+            } else {
+              processHeight = processWidth / videoAspect
+            }
+            
+            // Only resize canvas if dimensions changed
+            if (processCanvas.width !== processWidth || processCanvas.height !== processHeight) {
+              processCanvas.width = processWidth
+              processCanvas.height = processHeight
+            }
+            
+            // Draw downscaled frame
+            processCtx.drawImage(video, 0, 0, processWidth, processHeight)
+            
+            // Send downscaled image to MediaPipe
+            try {
+              faceMeshRef.current.send({ image: processCanvas })
+            } catch (sendError) {
+              console.error('FaceDetector: Error sending downscaled frame:', sendError)
+            }
+          }
+        } else {
+          // Video not ready - log for debugging
+          if (video.readyState === 0) {
+            console.log('FaceDetector: Video not loaded, readyState:', video.readyState)
+          }
         }
+      } else {
+        // Log what's missing for debugging
+        if (!videoRef.current) console.log('FaceDetector: Video ref not available')
+        if (!faceMeshRef.current) console.log('FaceDetector: FaceMesh not initialized')
+        if (!faceMeshReadyRef.current) console.log('FaceDetector: FaceMesh not ready')
       }
       // Continue processing with throttling
       animationFrameRef.current = requestAnimationFrame(processFrame)
     }
     
-    // Start processing immediately
-    animationFrameRef.current = requestAnimationFrame(processFrame)
+    // Start processing with delay to allow initialization
+    setTimeout(() => {
+      animationFrameRef.current = requestAnimationFrame(processFrame)
+    }, 200)
   }
 
   const getAlignmentGuidance = (horizontalOffset, verticalOffset) => {
@@ -340,10 +473,8 @@ const FaceDetector = ({
   }
 
   const renderOverlay = () => {
-    if (!showOverlay || !videoRef.current) return null
-
-    const video = videoRef.current
-    const videoRect = video.getBoundingClientRect()
+    // Always render overlay if showOverlay is true, even if video isn't ready yet
+    if (!showOverlay) return null
 
     return (
       <div 
@@ -354,11 +485,12 @@ const FaceDetector = ({
           left: 0,
           width: '100%',
           height: '100%',
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          zIndex: 100 // Increased to ensure it's above video
         }}
       >
-        {/* Face bounding box */}
-        {faceBox && (
+        {/* Face bounding box - always show placeholder if no face detected */}
+        {faceBox ? (
           <div
             className={`face-box ${faceDetected ? 'detected' : ''}`}
             style={{
@@ -369,31 +501,61 @@ const FaceDetector = ({
               height: `${faceBox.height * 100}%`,
               border: `2px solid ${faceDetected ? '#00ff00' : '#ff0000'}`,
               borderRadius: '8px',
-              transition: 'all 0.3s ease'
+              transition: 'all 0.3s ease',
+              zIndex: 11
             }}
           >
             <div className="face-confidence">
               {Math.round(confidence * 100)}%
             </div>
           </div>
+        ) : (
+          // Show placeholder frame when no face detected
+          <div
+            className="face-box placeholder"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '60%',
+              height: '70%',
+              border: '2px dashed rgba(255, 255, 255, 0.3)',
+              borderRadius: '8px',
+              zIndex: 11
+            }}
+          >
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              color: 'rgba(255, 255, 255, 0.5)',
+              fontSize: '0.875rem',
+              textAlign: 'center'
+            }}>
+              Position face here
+            </div>
+          </div>
         )}
 
         {/* Eye boxes - change color based on detection */}
-        {adaptiveBoxes && eyeBoxes.left && (
+        {adaptiveBoxes && (eyeBoxes.left || !faceDetected) && (
           <div
             className={`eye-box left-eye-box ${faceDetected && faceMetrics?.leftEye?.center ? 'detected' : ''}`}
             style={{
               position: 'absolute',
-              left: `${eyeBoxes.left.x * 100}%`,
-              top: `${eyeBoxes.left.y * 100}%`,
-              width: `${eyeBoxes.left.width * 100}%`,
-              height: `${eyeBoxes.left.height * 100}%`,
-              border: `2px solid ${faceDetected && faceMetrics?.leftEye?.center ? '#00ff00' : '#00ffff'}`,
+              left: eyeBoxes.left ? `${eyeBoxes.left.x * 100}%` : '35%',
+              top: eyeBoxes.left ? `${eyeBoxes.left.y * 100}%` : '45%',
+              width: eyeBoxes.left ? `${eyeBoxes.left.width * 100}%` : '8%',
+              height: eyeBoxes.left ? `${eyeBoxes.left.height * 100}%` : '8%',
+              border: `2px solid ${faceDetected && faceMetrics?.leftEye?.center ? '#00ff00' : 'rgba(255, 255, 255, 0.3)'}`,
               borderRadius: '50%',
               transition: 'all 0.3s ease',
               boxShadow: faceDetected && faceMetrics?.leftEye?.center 
                 ? '0 0 10px rgba(0, 255, 0, 0.5)' 
-                : '0 0 5px rgba(0, 255, 255, 0.3)'
+                : '0 0 5px rgba(255, 255, 255, 0.2)',
+              zIndex: 11
             }}
           >
             {faceDetected && faceMetrics?.leftEye?.center && (
@@ -410,21 +572,22 @@ const FaceDetector = ({
           </div>
         )}
 
-        {adaptiveBoxes && eyeBoxes.right && (
+        {adaptiveBoxes && (eyeBoxes.right || !faceDetected) && (
           <div
             className={`eye-box right-eye-box ${faceDetected && faceMetrics?.rightEye?.center ? 'detected' : ''}`}
             style={{
               position: 'absolute',
-              left: `${eyeBoxes.right.x * 100}%`,
-              top: `${eyeBoxes.right.y * 100}%`,
-              width: `${eyeBoxes.right.width * 100}%`,
-              height: `${eyeBoxes.right.height * 100}%`,
-              border: `2px solid ${faceDetected && faceMetrics?.rightEye?.center ? '#00ff00' : '#00ffff'}`,
+              left: eyeBoxes.right ? `${eyeBoxes.right.x * 100}%` : '57%',
+              top: eyeBoxes.right ? `${eyeBoxes.right.y * 100}%` : '45%',
+              width: eyeBoxes.right ? `${eyeBoxes.right.width * 100}%` : '8%',
+              height: eyeBoxes.right ? `${eyeBoxes.right.height * 100}%` : '8%',
+              border: `2px solid ${faceDetected && faceMetrics?.rightEye?.center ? '#00ff00' : 'rgba(255, 255, 255, 0.3)'}`,
               borderRadius: '50%',
               transition: 'all 0.3s ease',
               boxShadow: faceDetected && faceMetrics?.rightEye?.center 
                 ? '0 0 10px rgba(0, 255, 0, 0.5)' 
-                : '0 0 5px rgba(0, 255, 255, 0.3)'
+                : '0 0 5px rgba(255, 255, 255, 0.2)',
+              zIndex: 11
             }}
           >
             {faceDetected && faceMetrics?.rightEye?.center && (

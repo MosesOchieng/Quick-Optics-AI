@@ -37,6 +37,8 @@ const Layout = ({ children }) => {
                 <Link to="/profile" className="nav-link">Profile</Link>
                 <Link to="/settings" className="nav-link">Settings</Link>
                 <Link to="/contact" className="nav-link">Contact</Link>
+                <Link to="/login" className="nav-link">Login</Link>
+                <Link to="/signup" className="nav-link btn btn-outline" style={{ marginLeft: '0.5rem', padding: '0.5rem 1rem' }}>Sign Up</Link>
               </div>
               <button 
                 className="mobile-menu-toggle"
@@ -65,6 +67,8 @@ const Layout = ({ children }) => {
                 <Link to="/profile" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Profile</Link>
                 <Link to="/settings" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Settings</Link>
                 <Link to="/contact" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Contact</Link>
+                <Link to="/login" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Login</Link>
+                <Link to="/signup" className="sidebar-link" onClick={() => setSidebarOpen(false)}>Sign Up</Link>
               </nav>
             </div>
           </div>

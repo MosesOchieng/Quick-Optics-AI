@@ -96,7 +96,6 @@
 }
 
 .mobile-sidebar {
-  display: none;
   position: fixed;
   top: 0;
   left: 0;
@@ -107,11 +106,20 @@
   opacity: 0;
   visibility: hidden;
   transition: all 0.3s ease;
+  display: block;
+  pointer-events: none;
 }
 
 .mobile-sidebar.open {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
+}
+
+@media (min-width: 769px) {
+  .mobile-sidebar {
+    display: none !important;
+  }
 }
 
 .sidebar-content {

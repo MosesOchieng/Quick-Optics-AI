@@ -8,7 +8,7 @@ import PreAuthSplash from './PreAuthSplash'
 import { useFormValidation } from '../utils/validation'
 import './Auth.css'
 
-const Signup = () => {
+const ClinicSignup = () => {
   const navigate = useNavigate()
   const [showSplash, setShowSplash] = useState(true)
   const [loading, setLoading] = useState(false)
@@ -17,7 +17,6 @@ const Signup = () => {
   const [serverError, setServerError] = useState('')
 
   useEffect(() => {
-    // Show splash for 2 seconds on first visit
     const hasSeenSplash = localStorage.getItem('hasSeenPreAuthSplash')
     if (!hasSeenSplash) {
       const timer = setTimeout(() => {
@@ -37,11 +36,35 @@ const Signup = () => {
     handleBlur,
     validateAll
   } = useFormValidation({
-    name: '',
+    clinicName: '',
+    contactPerson: '',
     email: '',
+    phone: '',
+    licenseNumber: '',
+    address: '',
     password: '',
     confirmPassword: ''
   }, {
+    clinicName: {
+      required: true,
+      message: 'Clinic name is required'
+    },
+    contactPerson: {
+      required: true,
+      message: 'Contact person name is required'
+    },
+    phone: {
+      required: true,
+      message: 'Phone number is required'
+    },
+    licenseNumber: {
+      required: true,
+      message: 'License number is required'
+    },
+    address: {
+      required: true,
+      message: 'Clinic address is required'
+    },
     confirmPassword: {
       required: true,
       message: 'Please confirm your password'
@@ -53,18 +76,15 @@ const Signup = () => {
     setServerError('')
     setShowSuccess(false)
 
-    // Validate all fields
     if (!validateAll()) {
       return
     }
 
-    // Check password match
     if (formData.password !== formData.confirmPassword) {
       setServerError('Passwords do not match')
       return
     }
 
-    // Additional validation for confirmPassword
     if (!formData.confirmPassword) {
       setServerError('Please confirm your password')
       return
@@ -73,20 +93,28 @@ const Signup = () => {
     setLoading(true)
 
     try {
-      const response = await api.signup(formData.name, formData.email, formData.password)
+      // Use clinic-specific signup endpoint if available
+      const response = await api.clinicSignup({
+        clinicName: formData.clinicName,
+        contactPerson: formData.contactPerson,
+        email: formData.email,
+        phone: formData.phone,
+        licenseNumber: formData.licenseNumber,
+        address: formData.address,
+        password: formData.password,
+        userType: 'clinic'
+      })
       
-      // Show success message
-      setSuccessMessage('Account created! Please verify your email.')
+      setSuccessMessage('Clinic account created! Please verify your email.')
       setShowSuccess(true)
       
-      // Navigate to verification page after a short delay
       setTimeout(() => {
-        navigate('/verify', { state: { email: formData.email } })
+        navigate('/verify', { state: { email: formData.email, userType: 'clinic' } })
       }, 1500)
     } catch (err) {
       const errorMessage = err.message || 'Signup failed. Please try again.'
       setServerError(errorMessage)
-      console.error('Signup error:', err)
+      console.error('Clinic signup error:', err)
     } finally {
       setLoading(false)
     }
@@ -118,8 +146,11 @@ const Signup = () => {
               <img src="/Logo.jpeg" alt="Quick Optics AI" className="auth-logo-image" />
               <h1>Quick Optics AI</h1>
             </div>
-            <h2>Create Your Account</h2>
-            <p>Start your vision health journey today</p>
+            <h2>Register Your Clinic</h2>
+            <p>Join Quick Optics AI and provide professional vision testing to your patients</p>
+            <div className="clinic-badge">
+              <span>👨‍⚕️</span> Clinic/Optometrist Registration
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="auth-form">
@@ -135,30 +166,83 @@ const Signup = () => {
 
             <FormInput
               type="text"
-              name="name"
-              label="Full Name"
-              value={formData.name}
+              name="clinicName"
+              label="Clinic Name"
+              value={formData.clinicName}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="John Doe"
+              placeholder="ABC Eye Care Clinic"
               required
-              error={errors.name}
-              touched={touched.name}
+              error={errors.clinicName}
+              touched={touched.clinicName}
+            />
+
+            <FormInput
+              type="text"
+              name="contactPerson"
+              label="Contact Person Name"
+              value={formData.contactPerson}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="Dr. John Doe"
+              required
+              error={errors.contactPerson}
+              touched={touched.contactPerson}
             />
 
             <FormInput
               type="email"
               name="email"
-              label="Email Address"
+              label="Clinic Email Address"
               value={formData.email}
               onChange={handleChange}
               onBlur={handleBlur}
-              placeholder="you@example.com"
+              placeholder="clinic@example.com"
               required
               error={errors.email}
               touched={touched.email}
               hint="We'll send a verification code to this email"
               showEmailSuggestions
+            />
+
+            <FormInput
+              type="tel"
+              name="phone"
+              label="Phone Number"
+              value={formData.phone}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="+254 700 000 000"
+              required
+              error={errors.phone}
+              touched={touched.phone}
+            />
+
+            <FormInput
+              type="text"
+              name="licenseNumber"
+              label="License Number"
+              value={formData.licenseNumber}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="OP-12345"
+              required
+              error={errors.licenseNumber}
+              touched={touched.licenseNumber}
+              hint="Your optometry/clinic license number"
+            />
+
+            <FormInput
+              type="text"
+              name="address"
+              label="Clinic Address"
+              value={formData.address}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              placeholder="123 Main Street, Nairobi, Kenya"
+              required
+              error={errors.address}
+              touched={touched.address}
             />
 
             <FormInput
@@ -193,15 +277,20 @@ const Signup = () => {
               className="btn btn-primary btn-full"
               disabled={loading || Object.keys(errors).some(key => errors[key])}
             >
-              {loading ? 'Creating Account...' : 'Create Account'}
+              {loading ? 'Registering Clinic...' : 'Register Clinic'}
             </button>
           </form>
 
           <div className="auth-footer">
             <p>
-              Already have an account?{' '}
-              <Link to="/login" className="auth-link">
+              Already have a clinic account?{' '}
+              <Link to="/clinic-login" className="auth-link">
                 Sign in
+              </Link>
+            </p>
+            <p style={{ marginTop: '1rem' }}>
+              <Link to="/signup" className="auth-link">
+                Patient Sign Up
               </Link>
             </p>
           </div>
@@ -211,5 +300,5 @@ const Signup = () => {
   )
 }
 
-export default Signup
+export default ClinicSignup
 

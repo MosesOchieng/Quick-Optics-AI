@@ -5,14 +5,25 @@
 
 import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js'
 
-const ELEVENLABS_API_KEY = 'sk_43c2c79251536d19f4fa1e61a4d595d38617921fa654d5b4'
+// Get API key from environment variable or use fallback
+const ELEVENLABS_API_KEY = import.meta.env.VITE_ELEVENLABS_API_KEY || ''
 // Dr. AI - Professional Female Voice (Rachel)
 // Rachel has a warm, professional tone perfect for medical guidance
 const VOICE_ID = '21m00Tcm4TlvDq8ikWAM' // Rachel - Dr. AI's voice
+// Swahili voice ID - using same voice with multilingual model
+const SWAHILI_VOICE_ID = VOICE_ID // Using same voice for now, can be changed to a Swahili-specific voice
 
-const elevenlabs = new ElevenLabsClient({
-  apiKey: ELEVENLABS_API_KEY
-})
+// Only initialize ElevenLabs client if API key is available
+let elevenlabs = null
+if (ELEVENLABS_API_KEY) {
+  try {
+    elevenlabs = new ElevenLabsClient({
+      apiKey: ELEVENLABS_API_KEY
+    })
+  } catch (error) {
+    console.warn('Failed to initialize ElevenLabs client:', error)
+  }
+}
 
 /**
  * Detect if text is in Swahili
@@ -46,14 +57,24 @@ const detectSwahili = (text) => {
  * @returns {Promise<void>}
  */
 export const speakWithElevenLabs = async (text, voiceId = VOICE_ID, language = null) => {
+  // Auto-detect language if not specified
+  if (!language) {
+    language = detectSwahili(text) ? 'sw' : 'en'
+  }
+  
+  // If ElevenLabs is not configured or client is not initialized, use fallback immediately
+  if (!ELEVENLABS_API_KEY || !elevenlabs) {
+    console.log('ElevenLabs API key not configured, using fallback TTS')
+    fallbackTTS(text, language)
+    return
+  }
+  
   try {
-    // Auto-detect language if not specified
-    if (!language) {
-      language = detectSwahili(text) ? 'sw' : 'en'
-    }
-    
     // Use appropriate voice ID based on language
-    const selectedVoiceId = language === 'sw' ? SWAHILI_VOICE_ID : voiceId
+    // Fallback to VOICE_ID if SWAHILI_VOICE_ID is not available (for safety)
+    const selectedVoiceId = language === 'sw' 
+      ? (typeof SWAHILI_VOICE_ID !== 'undefined' ? SWAHILI_VOICE_ID : VOICE_ID)
+      : voiceId
     
     const audio = await elevenlabs.textToSpeech.convert(
       selectedVoiceId,
@@ -72,8 +93,15 @@ export const speakWithElevenLabs = async (text, voiceId = VOICE_ID, language = n
     
     await play(audio)
   } catch (error) {
-    console.error('ElevenLabs TTS Error:', error)
-    // Fallback to browser TTS with language detection
+    // Handle specific error types
+    if (error.status === 401 || error.statusCode === 401) {
+      console.warn('ElevenLabs API key is invalid or expired. Using fallback TTS.')
+    } else if (error.status === 429 || error.statusCode === 429) {
+      console.warn('ElevenLabs rate limit exceeded. Using fallback TTS.')
+    } else {
+      console.error('ElevenLabs TTS Error:', error)
+    }
+    // Always fallback to browser TTS on error
     fallbackTTS(text, language)
   }
 }

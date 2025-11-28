@@ -49,9 +49,9 @@ const SplashScreen = ({ onComplete }) => {
     if (option === 'home') {
       navigate('/')
     } else if (option === 'clinic') {
-      navigate('/login', { state: { userType: 'clinic' } })
-    } else if (option === 'testing') {
-      navigate('/start-test')
+      navigate('/user-type-selection')
+    } else if (option === 'signup') {
+      navigate('/user-type-selection')
     }
   }
 
@@ -98,10 +98,10 @@ const SplashScreen = ({ onComplete }) => {
             </button>
             <button
               className="splash-option-btn primary"
-              onClick={() => handleOptionSelect('testing')}
+              onClick={() => handleOptionSelect('home')}
             >
               <span className="option-icon">👁️</span>
-              <span className="option-label">Get Started with Eye Testing</span>
+              <span className="option-label">Get Started</span>
             </button>
           </motion.div>
           
