@@ -14,12 +14,55 @@ db.exec(`
     name TEXT,
     email TEXT UNIQUE NOT NULL,
     password TEXT,
+    userType TEXT DEFAULT 'patient',
     verified INTEGER DEFAULT 0,
     paymentConfirmed INTEGER DEFAULT 0,
     paymentMethod TEXT,
     otp TEXT,
     otpExpires INTEGER,
     createdAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS clinics (
+    id TEXT PRIMARY KEY,
+    user_id TEXT UNIQUE NOT NULL,
+    clinicName TEXT NOT NULL,
+    licenseNumber TEXT,
+    address TEXT,
+    phone TEXT,
+    website TEXT,
+    licenseTier TEXT DEFAULT 'basic',
+    maxPatients INTEGER DEFAULT 50,
+    activePatients INTEGER DEFAULT 0,
+    licenseExpires TEXT,
+    createdAt TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS patient_licenses (
+    id TEXT PRIMARY KEY,
+    clinic_id TEXT NOT NULL,
+    patient_id TEXT NOT NULL,
+    licenseCode TEXT UNIQUE NOT NULL,
+    status TEXT DEFAULT 'active',
+    assignedAt TEXT NOT NULL,
+    expiresAt TEXT,
+    notes TEXT,
+    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE
+  );
+
+  CREATE TABLE IF NOT EXISTS clinic_patients (
+    id TEXT PRIMARY KEY,
+    clinic_id TEXT NOT NULL,
+    patient_id TEXT NOT NULL,
+    assignedBy TEXT,
+    assignedAt TEXT NOT NULL,
+    status TEXT DEFAULT 'active',
+    notes TEXT,
+    FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE CASCADE,
+    FOREIGN KEY (patient_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(clinic_id, patient_id)
   );
 
   CREATE TABLE IF NOT EXISTS test_results (

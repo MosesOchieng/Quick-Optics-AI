@@ -37,7 +37,22 @@ const TestLayout = ({
     }
   }
 
-  const progressPercentage = totalSteps > 1 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : progress
+  // Calculate progress percentage with validation and clamping
+  const calculateProgress = () => {
+    if (totalSteps > 1) {
+      // Clamp currentStep to valid range
+      const clampedStep = Math.max(1, Math.min(currentStep, totalSteps))
+      const percentage = ((clampedStep - 1) / (totalSteps - 1)) * 100
+      return Math.max(0, Math.min(100, percentage)) // Clamp between 0-100
+    }
+    // Use progress prop, clamped between 0-100
+    return Math.max(0, Math.min(100, progress))
+  }
+
+  const progressPercentage = calculateProgress()
+  
+  // Get clamped step for display
+  const clampedStep = totalSteps > 1 ? Math.max(1, Math.min(currentStep, totalSteps)) : currentStep
 
   return (
     <div className={`test-layout ${darkMode ? 'dark-mode' : ''} ${fullscreen ? 'fullscreen' : ''}`}>
@@ -45,9 +60,9 @@ const TestLayout = ({
       <div className="test-header">
         <div className="test-header-content">
           {/* Progress indicator */}
-          <div className="test-progress-section">
+          <div className="test-progress-section" role="progressbar" aria-valuenow={progressPercentage} aria-valuemin="0" aria-valuemax="100" aria-label="Test progress">
             <div className="progress-bar-container">
-              <div className="progress-bar">
+              <div className="progress-bar" role="presentation">
                 <motion.div 
                   className="progress-fill"
                   initial={{ width: 0 }}
@@ -55,8 +70,8 @@ const TestLayout = ({
                   transition={{ duration: 0.5, ease: "easeOut" }}
                 />
               </div>
-              <span className="progress-text">
-                {totalSteps > 1 ? `Step ${currentStep} of ${totalSteps}` : `${Math.round(progress)}%`}
+              <span className="progress-text" aria-live="polite">
+                {totalSteps > 1 ? `Step ${clampedStep} of ${totalSteps}` : `${Math.round(progressPercentage)}%`}
               </span>
             </div>
           </div>
@@ -74,8 +89,9 @@ const TestLayout = ({
               onClick={handleExit}
               disabled={isExiting}
               title="Exit test"
+              aria-label="Exit test"
             >
-              ✕
+              <span aria-hidden="true">✕</span>
             </button>
           )}
         </div>
@@ -90,6 +106,9 @@ const TestLayout = ({
             exit={{ opacity: 0 }}
             className="instructions-overlay"
             onClick={() => setShowInstructions(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="instructions-title"
           >
             <motion.div
               initial={{ scale: 0.9, y: 20 }}
@@ -99,29 +118,31 @@ const TestLayout = ({
               onClick={(e) => e.stopPropagation()}
             >
               <div className="instructions-header">
-                <h3>📋 Test Instructions</h3>
+                <h3 id="instructions-title">👋 Welcome! Let's Get Started</h3>
                 <button 
                   className="instructions-close"
                   onClick={() => setShowInstructions(false)}
+                  aria-label="Close instructions"
                 >
-                  ✕
+                  <span aria-hidden="true">✕</span>
                 </button>
               </div>
               <div className="instructions-content">
                 <ul>
-                  <li>🎯 Follow the on-screen guidance carefully</li>
-                  <li>📱 Keep your device steady and at eye level</li>
-                  <li>💡 Ensure good lighting on your face</li>
-                  <li>👁️ Look directly at the camera when prompted</li>
-                  <li>🔇 Enable sound for voice guidance (optional)</li>
+                  <li>👋 Hi! I'm Dr. AI, your friendly vision guide. I'll walk you through each step.</li>
+                  <li>📱 Hold your device steady at eye level - like you're taking a selfie!</li>
+                  <li>💡 Make sure you're in a well-lit area so I can see your eyes clearly</li>
+                  <li>👁️ When I ask, look directly at the camera - just like visiting a real eye doctor</li>
+                  <li>🎤 Feel free to speak to me anytime - I'm here to help make this easy for you</li>
                 </ul>
               </div>
               <div className="instructions-footer">
                 <button 
                   className="btn-primary"
                   onClick={() => setShowInstructions(false)}
+                  aria-label="Start test"
                 >
-                  Got it, let's start!
+                  I'm ready! Let's begin 🚀
                 </button>
               </div>
             </motion.div>
@@ -150,8 +171,9 @@ const TestLayout = ({
         className="floating-help-btn"
         onClick={() => setShowInstructions(true)}
         title="Show instructions"
+        aria-label="Show test instructions"
       >
-        ?
+        <span aria-hidden="true">?</span>
       </button>
 
       {/* Emergency exit overlay */}
@@ -160,10 +182,14 @@ const TestLayout = ({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="exit-overlay"
+            role="status"
+            aria-live="polite"
+            aria-label="Exiting test"
           >
             <div className="exit-message">
-              <div className="exit-icon">👋</div>
+              <div className="exit-icon" aria-hidden="true">👋</div>
               <p>Exiting test...</p>
             </div>
           </motion.div>

@@ -17,6 +17,7 @@ const testRoutes = require('./routes/tests')
 const gameRoutes = require('./routes/games')
 const annotationRoutes = require('./routes/annotations')
 const cloudScoringRoutes = require('./routes/cloudScoring')
+const clinicRoutes = require('./routes/clinics')
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -32,6 +33,7 @@ app.use('/api/tests', testRoutes)
 app.use('/api/games', gameRoutes)
 app.use('/api/annotations', annotationRoutes)
 app.use('/api/cloud-scoring', cloudScoringRoutes)
+app.use('/api/clinics', clinicRoutes)
 
 // In-memory verification codes (email verification only)
 const verificationCodes = new Map()
@@ -68,13 +70,13 @@ app.post('/api/auth/signup', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create user
+    // Create user (patient by default)
     const id = uuidv4()
     const createdAt = new Date().toISOString()
     db.prepare(
-      `INSERT INTO users (id, name, email, password, verified, createdAt)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    ).run(id, name, email, hashedPassword, 0, createdAt)
+      `INSERT INTO users (id, name, email, password, userType, verified, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(id, name, email, hashedPassword, 'patient', 0, createdAt)
 
     const user = { id, name, email, verified: false }
 
@@ -169,6 +171,7 @@ app.post('/api/auth/resend-verification', (req, res) => {
   }
 })
 
+// Patient Login (separate from clinic login)
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body
@@ -176,6 +179,13 @@ app.post('/api/auth/login', async (req, res) => {
     const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email)
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' })
+    }
+
+    // Reject clinic accounts - they should use clinic login
+    if (user.userType === 'clinic' || user.userType === 'optometrist') {
+      return res.status(403).json({ 
+        message: 'This is a clinic account. Please use the clinic login portal.' 
+      })
     }
 
     const validPassword = await bcrypt.compare(password, user.password || '')
@@ -191,6 +201,7 @@ app.post('/api/auth/login', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
+        userType: user.userType || 'patient',
         verified: user.verified
       }
     })

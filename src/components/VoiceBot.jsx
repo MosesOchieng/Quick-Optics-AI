@@ -9,6 +9,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { speakWithElevenLabs } from '../utils/elevenLabs'
 import mobileSpeech from '../utils/mobileSpeech'
 import screenAnalyzer from '../utils/screenAnalyzer'
+import voiceActivityDetector from '../utils/voiceActivityDetection'
+import conversationAI from '../utils/conversationAI'
+import adaptiveLearning from '../services/adaptiveLearning'
+import { useVoiceBot } from '../contexts/VoiceBotContext'
 import './VoiceBot.css'
 
 const VoiceBot = ({ 
@@ -18,10 +22,12 @@ const VoiceBot = ({
 }) => {
   const location = useLocation()
   const navigate = useNavigate()
+  const voiceBotContext = useVoiceBot()
   const [isActive, setIsActive] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [isQuestionMode, setIsQuestionMode] = useState(false)
+  const [isQuietMode, setIsQuietMode] = useState(false) // New: Quiet mode state
   const [currentQuestion, setCurrentQuestion] = useState(null)
   const [currentAnswer, setCurrentAnswer] = useState(null)
   const [questionIndex, setQuestionIndex] = useState(0)
@@ -34,6 +40,23 @@ const VoiceBot = ({
   const lastAnswerTimeRef = useRef(null)
   const lastAnswerProcessedRef = useRef(0)
   const answerThrottleMs = 1000 // Prevent processing same answer multiple times
+  
+  // Learning and adaptation state
+  const answerHistoryRef = useRef([]) // Store all answers for learning
+  const userProfileRef = useRef({}) // Build user profile from answers
+  const eyeMovementRef = useRef({ gazePoints: [], movements: [], stability: 0 })
+  const adaptiveQuestionsRef = useRef([]) // Dynamically generated questions based on answers
+  
+  // Conversation memory and context for intelligent responses
+  const conversationHistoryRef = useRef([]) // Store conversation context
+  const userPreferencesRef = useRef({}) // Store user preferences and patterns
+  const responseVariationsRef = useRef(new Map()) // Track response variations to avoid repetition
+  const contextRef = useRef({}) // Current conversation context
+  
+  // Voice Activity Detection state
+  const vadInitializedRef = useRef(false)
+  const humanVoiceDetectedRef = useRef(false)
+  const shouldListenRef = useRef(false)
 
   // Detect language from text - Enhanced with extensive Swahili vocabulary
   const detectLanguage = (text) => {
@@ -97,6 +120,11 @@ const VoiceBot = ({
       recognitionRef.current.maxAlternatives = 1 // Reduced to 1 for better performance
       
       recognitionRef.current.onresult = (event) => {
+        // Only process if human voice was detected
+        if (!humanVoiceDetectedRef.current && !shouldListenRef.current) {
+          return // Ignore non-human sounds
+        }
+        
         // Process all results for better accuracy, but prioritize final results
         let finalTranscript = ''
         let interimTranscript = ''
@@ -114,13 +142,17 @@ const VoiceBot = ({
         const transcript = (finalTranscript || interimTranscript).trim()
         
         if (transcript && transcript.length >= 2) {
-          // Log what was heard for debugging
-          console.log('VoiceBot heard:', transcript, 'Language detected:', detectLanguage(transcript))
-          
-          if (isQuestionMode) {
-            handleAnswer(transcript)
-          } else {
-            handleVoiceCommand(transcript)
+          // Verify it's likely human speech (contains words, not just noise)
+          const hasWords = /\b\w{2,}\b/.test(transcript)
+          if (hasWords) {
+            // Log what was heard for debugging
+            console.log('VoiceBot heard (human voice):', transcript, 'Language detected:', detectLanguage(transcript))
+            
+            if (isQuestionMode) {
+              handleAnswer(transcript)
+            } else {
+              handleVoiceCommand(transcript)
+            }
           }
         } else if (transcript.length > 0 && transcript.length < 2) {
           // Very short response - might be incomplete, wait for more
@@ -128,12 +160,44 @@ const VoiceBot = ({
         }
       }
       
+      // Auto-restart listening when it stops (for continuous voice activation)
+      recognitionRef.current.onend = () => {
+        // Only restart if we're active, not speaking, not in quiet mode, and human voice was detected
+        if (isActive && !isSpeaking && !isQuietMode && recognitionRef.current && (humanVoiceDetectedRef.current || shouldListenRef.current)) {
+          // Small delay before restarting to prevent rapid restarts
+          setTimeout(() => {
+            try {
+              recognitionRef.current.start()
+              setIsListening(true)
+            } catch (error) {
+              // Recognition might already be starting - ignore
+            }
+          }, 100)
+        }
+      }
+      
       recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error)
-        
         // Handle different error types with user-friendly messages
         if (event.error === 'no-speech') {
           // No speech detected - this is normal, just continue listening silently
+          return
+        } else if (event.error === 'network') {
+          // Network errors are common and expected - don't spam console
+          // Only log occasionally for debugging
+          if (Math.random() < 0.01) { // Log ~1% of network errors
+            console.warn('Speech recognition network error (this is normal if offline)')
+          }
+          // Try to restart after a delay
+          if (isActive && !isSpeaking && recognitionRef.current) {
+            setTimeout(() => {
+              try {
+                recognitionRef.current.start()
+                setIsListening(true)
+              } catch (error) {
+                // Ignore restart errors
+              }
+            }, 2000)
+          }
           return
         } else if (event.error === 'audio-capture') {
           // Microphone not available
@@ -185,21 +249,6 @@ const VoiceBot = ({
           }
         }
       }
-      
-      recognitionRef.current.onend = () => {
-        // Auto-restart if we're still in question mode - with delay to prevent rapid restarts
-        if (isQuestionMode && isListening) {
-          setTimeout(() => {
-            if (isQuestionMode && isListening && recognitionRef.current) {
-              try {
-                recognitionRef.current.start()
-              } catch (error) {
-                // Already started or other error - ignore
-              }
-            }
-          }, 500) // Small delay to prevent rapid restart loops
-        }
-      }
     }
 
     return () => {
@@ -212,27 +261,85 @@ const VoiceBot = ({
     }
   }, [])
 
-  // Load language preference from localStorage
+  // Load language preference and quiet mode from localStorage
   useEffect(() => {
     const savedLang = localStorage.getItem('voiceBot_language')
     if (savedLang === 'sw' || savedLang === 'en') {
       setLanguage(savedLang)
     }
+    
+    const savedQuietMode = localStorage.getItem('voiceBot_quietMode')
+    if (savedQuietMode === 'true') {
+      setIsQuietMode(true)
+      setIsActive(false)
+    }
   }, [])
 
-  // Save language preference
+  // Save language preference and quiet mode
   useEffect(() => {
     localStorage.setItem('voiceBot_language', language)
-  }, [language])
+    localStorage.setItem('voiceBot_quietMode', isQuietMode.toString())
+  }, [language, isQuietMode])
 
-  // Auto-activate and welcome based on route
+  // Initialize Voice Activity Detection (even in quiet mode to detect wake commands)
   useEffect(() => {
+    // Initialize VAD even in quiet mode so we can detect wake commands
+    if (!vadInitializedRef.current) {
+      voiceActivityDetector.initialize().then(initialized => {
+        if (initialized) {
+          vadInitializedRef.current = true
+          
+          // Start VAD to detect human voice
+          voiceActivityDetector.startDetection(
+            // On human voice detected
+            (analysis) => {
+              humanVoiceDetectedRef.current = true
+              shouldListenRef.current = true
+              
+              // Start recognition if not already listening
+              if (!isListening && recognitionRef.current && !isSpeaking) {
+                try {
+                  recognitionRef.current.start()
+                  setIsListening(true)
+                } catch (error) {
+                  // Recognition might already be starting
+                }
+              }
+            },
+            // On silence detected
+            (analysis) => {
+              // Keep listening flag for a bit in case user pauses
+              setTimeout(() => {
+                if (!humanVoiceDetectedRef.current) {
+                  shouldListenRef.current = false
+                }
+              }, 2000)
+            }
+          )
+        }
+      })
+    }
+    
+    return () => {
+      if (vadInitializedRef.current) {
+        voiceActivityDetector.stopDetection()
+      }
+    }
+  }, [isActive, isListening, isSpeaking])
+
+  // Auto-activate and welcome based on route (only if not in quiet mode)
+  useEffect(() => {
+    if (isQuietMode) {
+      // Don't auto-activate if in quiet mode
+      return
+    }
+    
     const path = location.pathname
     
     // Auto-activate on testing pages
     if (path.includes('eye-scan')) {
       setIsActive(true)
-      // Auto-start consultation for eye-scan
+      // VAD will handle starting recognition when human voice is detected
       setTimeout(() => {
         if (mode === 'test' && testType === 'eye-scan') {
           startTestQuestions() // Auto-start consultation questions
@@ -263,6 +370,15 @@ const VoiceBot = ({
     } else if (path.includes('vision-tests') || path.includes('mini-games')) {
       setIsActive(true)
       setTimeout(() => {
+        // Auto-start listening
+        if (recognitionRef.current && !isSpeaking) {
+          try {
+            recognitionRef.current.start()
+            setIsListening(true)
+          } catch (error) {
+            // Recognition might already be starting
+          }
+        }
         provideWelcomeGuidance()
       }, 1000)
     } else if (path === '/onboarding') {
@@ -276,11 +392,11 @@ const VoiceBot = ({
         speak('Here are your vision test results. I can help explain what they mean.')
       }, 1000)
     }
-  }, [location.pathname, mode, testType, language])
+  }, [location.pathname, mode, testType, language, isQuietMode])
 
   // Read and reason about screen content automatically
   useEffect(() => {
-    if (screenContent && isActive && !isSpeaking) {
+    if (screenContent && isActive && !isSpeaking && !isQuietMode) {
       // Analyze screen content
       const analysis = screenAnalyzer.analyze(screenContent)
       screenAnalysisRef.current = analysis
@@ -308,6 +424,12 @@ const VoiceBot = ({
   }, [screenContent, isActive, isSpeaking])
 
   const speak = async (text) => {
+    // Don't speak if in quiet mode
+    if (isQuietMode) {
+      console.log('VoiceBot: Quiet mode active, not speaking')
+      return Promise.resolve()
+    }
+    
     if (!text || isProcessingRef.current) return Promise.resolve()
     
     isProcessingRef.current = true
@@ -317,6 +439,13 @@ const VoiceBot = ({
       const finishSpeaking = () => {
         setIsSpeaking(false)
         isProcessingRef.current = false
+        
+        // Reset voice detection flag - VAD will detect next human voice
+        humanVoiceDetectedRef.current = false
+        
+        // VAD will automatically start recognition when human voice is detected
+        // No need to manually start here - let VAD handle it
+        
         processQueue()
         resolve()
       }
@@ -428,8 +557,38 @@ const VoiceBot = ({
       setCurrentQuestion(question)
       setQuestionIndex(index)
       
-      // Doctor-like question delivery - no repetitive "I'm listening" messages
-      speak(question.question).then(() => {
+      // Intelligent, natural question delivery with context
+      const stepNumber = index + 1
+      const totalSteps = questions.length
+      
+      // Use ConversationAI to generate natural question introduction
+      const context = conversationAI.getContext()
+      context.language = language
+      context.currentStep = stepNumber
+      context.totalSteps = totalSteps
+      
+      // Natural step introduction
+      let stepIntro = ''
+      if (totalSteps > 1) {
+        if (stepNumber === 1) {
+          stepIntro = language === 'sw'
+            ? 'Sawa, tuanze na swali la kwanza. '
+            : 'Alright, let\'s start with the first question. '
+        } else if (stepNumber === totalSteps) {
+          stepIntro = language === 'sw'
+            ? 'Swali la mwisho. '
+            : 'Last question. '
+        } else {
+          stepIntro = language === 'sw'
+            ? `Swali la ${stepNumber} la ${totalSteps}. `
+            : `Question ${stepNumber} of ${totalSteps}. `
+        }
+      }
+      
+      const friendlyQuestion = `${stepIntro}${question.question}`
+      conversationAI.addToHistory('bot', friendlyQuestion, { questionKey: question.key })
+      
+      speak(friendlyQuestion).then(() => {
         // Silently start listening - no announcement
         setIsListening(true)
         lastAnswerTimeRef.current = Date.now()
@@ -489,16 +648,31 @@ const VoiceBot = ({
         }, 10000) // 10 seconds timeout
       })
     } else {
-      // All questions answered - doctor-like conclusion
+      // All questions answered - intelligent, natural conclusion
       setIsQuestionMode(false)
       setCurrentQuestion(null)
       setIsListening(false)
       if (recognitionRef.current) {
         recognitionRef.current.stop()
       }
-      const conclusion = language === 'sw'
-        ? 'Vizuri sana. Nina taarifa zote ninazohitaji kutoka kwa ushauri wetu. Sasa tuendelee na uchunguzi wako wa macho. Tafadhali weka uso wako mbele ya kamera, na nitakuongoza katika mchakato wa kuweka sawa.'
-        : 'Excellent. I have all the information I need from our consultation. Now let\'s proceed with your eye examination. Please position your face in front of the camera, and I\'ll guide you through the alignment process.'
+      
+      // Generate natural conclusion based on conversation context
+      const context = conversationAI.getContext()
+      context.language = language
+      const userMood = context.userMood || 'neutral'
+      
+      let conclusion = ''
+      if (userMood === 'nervous') {
+        conclusion = language === 'sw'
+          ? 'Asante sana kwa kushiriki taarifa zako. Nina taarifa zote ninazohitaji. Sasa tuendelee na uchunguzi wako wa macho. Usiwe na wasiwasi - nitakuwa nawe kila hatua na nitaeleza kila kitu tunachofanya. Tafadhali weka uso wako mbele ya kamera unapokuwa tayari.'
+          : 'Thank you so much for sharing that information with me. I have everything I need now. Let\'s move on to your eye examination. Don\'t worry - I\'ll be with you every step of the way and I\'ll explain everything we\'re doing. Just position your face in front of the camera when you\'re ready.'
+      } else {
+        conclusion = language === 'sw'
+          ? 'Asante sana! Nina taarifa zote ninazohitaji. Sasa tuendelee na uchunguzi wako wa macho. Nitakuongoza hatua kwa hatua - hakuna haja ya kuharaka. Tafadhali weka uso wako mbele ya kamera unapokuwa tayari.'
+          : 'Thank you so much! I have all the information I need. Now let\'s move on to your eye examination. I\'ll guide you step by step - there\'s no rush. Just position your face in front of the camera when you\'re ready.'
+      }
+      
+      conversationAI.addToHistory('bot', conclusion)
       speak(conclusion)
     }
   }
@@ -509,44 +683,44 @@ const VoiceBot = ({
     const questionSets = {
       'eye-scan': isSwahili ? [
         { 
-          question: 'Jambo! Mimi ni Quick Optics AI. Kabla ya kuanza, swali moja: Je, una ulemavu wowote wa macho au matatizo ya kuona leo?', 
+          question: 'Hujambo! Mimi ni Daktari AI kutoka Quick Optics. Kabla ya kuanza, hebu tujue kidogo kuhusu hali yako ya macho. Je, una ulemavu wowote wa macho au matatizo ya kuona leo?', 
           key: 'symptoms'
         },
         { 
-          question: 'Je, unavaa miwani au lenzi za macho?', 
+          question: 'Sawa, nimeelewa. Swali la pili: Je, unavaa miwani au lenzi za macho?', 
           key: 'correctiveLenses'
         },
         { 
-          question: 'Je, umewahi kuwa na upasuaji wa macho au hali zozote zilizotambuliwa?', 
+          question: 'Asante. Je, umewahi kuwa na upasuaji wa macho au hali zozote zilizotambuliwa na daktari?', 
           key: 'history'
         },
         { 
-          question: 'Je, uko katika chumba chenye mwanga mzuri?', 
+          question: 'Vizuri. Je, uko katika chumba chenye mwanga mzuri? Hii ni muhimu ili niweze kuona macho yako vizuri.', 
           key: 'lighting'
         },
         { 
-          question: 'Sawa. Tuanze. Tafadhali weka uso wako mbele ya kamera.', 
+          question: 'Mkuu! Sasa tuko tayari. Tafadhali weka uso wako mbele ya kamera, na nitakuongoza hatua kwa hatua. Usiwe na wasiwasi - nitakuwa hapa kila hatua!', 
           key: 'ready'
         }
       ] : [
         { 
-          question: 'Hello! I\'m Quick Optics AI. Before we start, a quick question: Are you experiencing any eye discomfort or vision problems today?', 
+          question: 'Hi there! I\'m Dr. AI from Quick Optics. Before we begin, let me get to know you a bit. Are you experiencing any eye discomfort or vision problems today?', 
           key: 'symptoms'
         },
         { 
-          question: 'Do you wear glasses or contact lenses?', 
+          question: 'Got it, thanks for sharing. Next question: Do you wear glasses or contact lenses?', 
           key: 'correctiveLenses'
         },
         { 
-          question: 'Have you had any eye surgeries or conditions diagnosed?', 
+          question: 'Thank you. Have you had any eye surgeries or conditions diagnosed by a doctor?', 
           key: 'history'
         },
         { 
-          question: 'Are you in a well-lit room?', 
+          question: 'Good to know. Are you in a well-lit room? This helps me see your eyes clearly.', 
           key: 'lighting'
         },
         { 
-          question: 'Perfect. Let\'s begin. Please position your face in front of the camera.', 
+          question: 'Perfect! We\'re all set. Now, please position your face in front of the camera, and I\'ll guide you step by step. Don\'t worry - I\'ll be with you every step of the way!', 
           key: 'ready'
         }
       ],
@@ -579,13 +753,25 @@ const VoiceBot = ({
 
   const provideWelcomeGuidance = () => {
     let welcomeText = ''
+    const isSwahili = language === 'sw'
     
     if (mode === 'test') {
       welcomeText = getTestWelcome(testType)
+      // Ask about language preference after welcome
+      setTimeout(() => {
+        const langQuestion = isSwahili
+          ? 'Kabla ya kuanza, je, ungependa mimi niongee Kiswahili au Kiingereza? Sema "Kiswahili" au "Kiingereza".'
+          : 'Before we begin, would you like me to speak in Swahili or English? Just say "Swahili" or "English".'
+        speak(langQuestion)
+      }, 3000)
     } else if (mode === 'game') {
-      welcomeText = 'Hello! I\'m Dr. AI, and I\'ll guide you through these vision training exercises. Think of them as fun eye workouts that help improve your visual skills.'
+      welcomeText = isSwahili
+        ? 'Hujambo! Mimi ni Daktari AI, na nitakuongoza katika mazoezi haya ya mafunzo ya kuona. Fikiria haya kama mazoezi ya macho yanayofurahisha ambayo yanasaidia kuboresha ujuzi wako wa kuona.'
+        : 'Hi there! I\'m Dr. AI, and I\'ll guide you through these vision training exercises. Think of them as fun eye workouts that help improve your visual skills. Ready to start?'
     } else {
-      welcomeText = 'Hello! I\'m Dr. AI, your personal vision care assistant. I\'m here to guide you through your comprehensive eye examination with the same care and expertise you\'d receive in my office. Let\'s begin!'
+      welcomeText = isSwahili
+        ? 'Hujambo! Mimi ni Daktari AI, msaidizi wako wa huduma za macho. Nipo hapa kukusaidia kupitia uchunguzi wako kamili wa macho kwa uangalifu na ujuzi sawa na ungepokea ofisini kwangu. Tuanze!'
+        : 'Hello! I\'m Dr. AI, your friendly vision care assistant. I\'m here to guide you step by step through your eye examination, just like you\'d experience in a real eye doctor\'s office. Let\'s take this one step at a time - I\'ll be with you every moment!'
     }
     
     speak(welcomeText)
@@ -596,8 +782,8 @@ const VoiceBot = ({
     
     const welcomes = {
       'eye-scan': isSwahili 
-        ? 'Sawa! Sasa naweza kukuona wazi. Mimi ni Quick Optics AI, na nitaangalia macho yako. Tafadhali angalia moja kwa moja kwenye kamera na usisongeshe. Nitakuongoza katika kila hatua.'
-        : 'Perfect! Now I can see you clearly. I\'m Quick Optics AI, and I\'m going to examine your eyes. Please look straight at the camera and hold still. I\'ll guide you through each step.',
+        ? 'Sawa! Sasa naweza kukuona wazi. Mimi ni Quick Optics AI, na nitaangalia macho yako kwa uangalifu. Tafadhali angalia moja kwa moja kwenye kamera na usisongeshe. Nitakuongoza hatua kwa hatua - hakuna haja ya kuharaka!'
+        : 'Perfect! I can see you clearly now. I\'m Dr. AI from Quick Optics, and I\'m going to examine your eyes carefully. Just look straight at the camera and hold still - I\'ll guide you through each step, so don\'t worry about a thing!',
       'myopia': isSwahili
         ? 'Sasa tunajaribu kwa ulemavu wa kuona wa karibu, ambao ni wa kawaida sana. Nitaonyesha herufi za ukubwa tofauti. Zisome tu kwa sauti kubwa zinapoonekana, na usiwe na wasiwasi ikiwa zingine zinaonekana zimefifia - hiyo ndiyo ninayohitaji kujua.'
         : 'Now we\'re testing for nearsightedness, which is very common. I\'ll show you some letters at different sizes. Just read them out loud as they appear, and don\'t worry if some seem blurry - that\'s exactly what I need to know.',
@@ -751,20 +937,12 @@ const VoiceBot = ({
     let response = ''
     
     if (!understanding.understood || understanding.confidence < 0.3) {
-      // Didn't understand - ask for clarification (bilingual, doctor-like)
-      const clarificationMessages = language === 'sw' ? [
-        'Samahani, sikuweza kuelewa vizuri. Tafadhali sema tena, au unaweza kujibu kwa njia tofauti?',
-        'Nimesikia lakini sikuweza kuelewa wazi. Tafadhali rudia jibu lako, au sema kwa maneno mengine?',
-        'Ninafikiri sikuweza kukupata vizuri. Tafadhali jaribu kusema tena, au unaweza kueleza kwa njia nyingine?',
-        'Samahani, jibu lako halikuwazi kwangu. Tafadhali sema tena au jibu kwa maneno mengine?'
-      ] : [
-        'I want to make sure I understand you correctly. Could you please answer that again, or try saying it differently?',
-        'I heard you but I\'m not sure I understood. Could you repeat your answer, or explain it in another way?',
-        'I think I might have missed that. Could you try saying it again, or rephrase your answer?',
-        'I\'m sorry, I didn\'t catch that clearly. Could you please repeat it, or answer in a different way?'
-      ]
-      
-      response = clarificationMessages[Math.floor(Math.random() * clarificationMessages.length)]
+      // Didn't understand - use intelligent clarification from ConversationAI
+      conversationAI.addToHistory('user', answer, { unclear: true })
+      const context = conversationAI.getContext()
+      context.language = language
+      response = conversationAI.generateNaturalResponse('clarification', context)
+      conversationAI.addToHistory('bot', response)
       
       // Also repeat the question to help user
       const currentQ = getTestQuestions(testType)[questionIndex]
@@ -800,69 +978,113 @@ const VoiceBot = ({
       return
     }
     
-    // Doctor-like confirmations based on answer type (Bilingual)
-    if (currentQ?.key === 'symptoms') {
-      if (understanding.isNo) {
-        response = language === 'sw'
-          ? 'Vizuri kusikia kuwa huna ulemavu wowote. Hiyo ni taarifa muhimu.'
-          : 'Good to hear you\'re not experiencing any discomfort. That\'s helpful information.'
-      } else if (understanding.isYes || understanding.hasDetails) {
-        response = language === 'sw'
-          ? 'Naelewa. Nitaandika hiyo na tutaangalia wakati wa uchunguzi.'
-          : 'I understand. I\'ll make note of that and we\'ll keep an eye on it during the examination.'
+    // LEARN: Store answer in history for learning
+    answerHistoryRef.current.push({
+      questionKey: currentQ?.key,
+      answer: answer,
+      understanding: understanding,
+      timestamp: Date.now(),
+      testType: testType
+    })
+    
+    // LEARN: Update user profile based on answer
+    if (currentQ?.key) {
+      if (!userProfileRef.current[currentQ.key]) {
+        userProfileRef.current[currentQ.key] = []
       }
-    } else if (currentQ?.key === 'correctiveLenses') {
-      if (understanding.isYes) {
-        response = language === 'sw'
-          ? 'Asante. Kujua kuhusu miwani yako au lenzi zako kunanisaidia kufasiri matokeo yako kwa usahihi zaidi.'
-          : 'Thank you. Knowing about your corrective lenses helps me interpret your results more accurately.'
-      } else if (understanding.isNo) {
-        response = language === 'sw'
-          ? 'Naelewa. Tutaanzisha msingi wako wa kuona leo.'
-          : 'Understood. We\'ll establish your baseline vision today.'
-      }
-    } else if (currentQ?.key === 'history') {
-      if (understanding.isNo) {
-        response = language === 'sw'
-          ? 'Hiyo ni habari nzuri. Historia safi ni chanya kila wakati.'
-          : 'That\'s good to know. A clean history is always positive.'
-      } else if (understanding.isYes || understanding.hasDetails) {
-        response = language === 'sw'
-          ? 'Nashukuru kwa kushiriki hiyo. Historia yako ya kiafya ni muhimu kwa tathmini sahihi.'
-          : 'I appreciate you sharing that. Your medical history is important for accurate assessment.'
-      }
-    } else if (currentQ?.key === 'lighting') {
-      if (understanding.isYes) {
-        response = language === 'sw'
-          ? 'Sawa. Mwanga mzuri huhakikisha tunapata matokeo sahihi zaidi.'
-          : 'Perfect. Good lighting ensures we get the most accurate results.'
-      } else if (understanding.isNo) {
-        response = language === 'sw'
-          ? 'Ikiwezekana, jaribu kuboresha mwanga katika chumba chako. Itasaidia kwa usahihi wa skani.'
-          : 'If possible, try to improve the lighting in your room. It will help with the accuracy of the scan.'
-      }
-    } else {
-      // Generic doctor-like confirmation (Bilingual)
-      response = understanding.hasDetails 
-        ? (language === 'sw'
-          ? 'Asante kwa taarifa hiyo ya kina. Nimeiandika.'
-          : 'Thank you for that detailed information. I\'ve noted it down.')
-        : (language === 'sw'
-          ? 'Naelewa. Asante.'
-          : 'Understood. Thank you.')
+      userProfileRef.current[currentQ.key].push({
+        answer: answer,
+        isYes: understanding.isYes,
+        isNo: understanding.isNo,
+        hasDetails: understanding.hasDetails,
+        details: understanding.hasDetails ? answer : null
+      })
     }
     
-    // Speak confirmation and move to next question
+    // LEARN: Generate adaptive follow-up questions based on answer
+    const adaptiveQuestions = generateAdaptiveQuestions(currentQ, understanding, userProfileRef.current)
+    if (adaptiveQuestions.length > 0) {
+      adaptiveQuestionsRef.current = adaptiveQuestions
+    }
+    
+    // Intelligent, natural confirmations using ConversationAI
+    conversationAI.addToHistory('user', answer, { questionKey: currentQ?.key })
+    const context = conversationAI.getContext()
+    context.language = language
+    context.currentPhase = scanPhase
+    context.previousAnswers = answerHistoryRef.current.slice(-3)
+    
+    // Generate natural confirmation
+    response = conversationAI.generateConfirmation(answer, currentQ?.key, context)
+    
+    // Add intelligent follow-up if appropriate
+    const followUp = conversationAI.generateFollowUp(answer, currentQ?.key, context)
+    if (followUp && (understanding.isYes || understanding.hasDetails)) {
+      response += ' ' + followUp
+      // Add follow-up to adaptive questions
+      adaptiveQuestionsRef.current.push({ question: followUp, key: `${currentQ?.key}_followup` })
+    }
+    
+    conversationAI.addToHistory('bot', response)
+    
+    // Learn from this interaction
+    adaptiveLearning.learnFromInteraction({
+      type: 'answer',
+      input: answer,
+      response: response,
+      feedback: 'positive', // Assume positive if user provided answer
+      outcome: 'success',
+      metadata: {
+        questionKey: currentQ?.key,
+        language,
+        testType
+      }
+    })
+    
+    // Check eye movement context if available
+    const eyeContext = getEyeMovementContext()
+    if (eyeContext && eyeContext.stability < 0.7) {
+      const stabilityMsg = language === 'sw'
+        ? ' Naona macho yako yanahitaji muda kidogo kujikaza. Chukua muda wako - niko hapa.'
+        : ' I notice your eyes might need a moment to focus. Take your time - I\'m here.'
+      response += stabilityMsg
+    }
+    
+    // Speak confirmation and move to next question (or adaptive follow-up)
     speak(response).then(() => {
-      const nextIndex = questionIndex + 1
-      setTimeout(() => {
-        askNextQuestion(nextIndex)
-      }, 800) // Slightly longer for natural conversation flow
+      // Check if we should ask adaptive follow-up question
+      if (adaptiveQuestionsRef.current.length > 0 && questionIndex < getTestQuestions(testType).length - 1) {
+        const followUp = adaptiveQuestionsRef.current.shift()
+        speak(followUp.question).then(() => {
+          setTimeout(() => {
+            askNextQuestion(questionIndex + 1)
+          }, 1000)
+        })
+      } else {
+        const nextIndex = questionIndex + 1
+        setTimeout(() => {
+          askNextQuestion(nextIndex)
+        }, 800) // Slightly longer for natural conversation flow
+      }
     })
   }
 
   const handleVoiceCommand = (command) => {
     const lowerCommand = command.toLowerCase()
+    
+    // Check for wake commands first (these work even in quiet mode)
+    const isWakeCommand = lowerCommand.includes('wake up') || lowerCommand.includes('wake') || 
+                          lowerCommand.includes('activate') || lowerCommand.includes('come back') || 
+                          lowerCommand.includes('resume') || lowerCommand.includes('hello') || 
+                          lowerCommand.includes('hi') || lowerCommand.includes('amka') || 
+                          lowerCommand.includes('fungua') || lowerCommand.includes('rudia') ||
+                          lowerCommand.includes('jambo') || lowerCommand.includes('habari')
+    
+    // If in quiet mode and not a wake command, ignore it
+    if (isQuietMode && !isWakeCommand) {
+      console.log('VoiceBot: In quiet mode, ignoring command:', command)
+      return
+    }
     
     // Detect language from command and update language state
     const detectedLang = detectLanguage(command)
@@ -870,15 +1092,23 @@ const VoiceBot = ({
       setLanguage(detectedLang)
     }
     
-    // Language switching commands
-    if (lowerCommand.includes('swahili') || lowerCommand.includes('kiswahili') || lowerCommand.includes('sw')) {
+    // Language switching commands - enhanced detection
+    if (lowerCommand.includes('swahili') || lowerCommand.includes('kiswahili') || 
+        lowerCommand.includes('sw') || lowerCommand.includes('swahili') ||
+        lowerCommand.includes('yes') && (lowerCommand.includes('swahili') || lowerCommand.includes('kiswahili')) ||
+        lowerCommand.includes('ndiyo') && (lowerCommand.includes('swahili') || lowerCommand.includes('kiswahili'))) {
       setLanguage('sw')
-      speak('Sawa! Nitaongea Kiswahili sasa. Habari yako?')
+      const confirmMsg = 'Sawa kabisa! Nitaongea Kiswahili sasa. Habari yako? Unaweza kuuliza maswali yoyote kuhusu mtihani wako wa macho.'
+      speak(confirmMsg)
       return
     }
-    if (lowerCommand.includes('english') || lowerCommand.includes('ingereza') || lowerCommand.includes('en')) {
+    if (lowerCommand.includes('english') || lowerCommand.includes('ingereza') || 
+        lowerCommand.includes('en') || lowerCommand.includes('english') ||
+        lowerCommand.includes('yes') && (lowerCommand.includes('english') || lowerCommand.includes('ingereza')) ||
+        lowerCommand.includes('ndiyo') && (lowerCommand.includes('english') || lowerCommand.includes('ingereza'))) {
       setLanguage('en')
-      speak('Okay! I\'ll speak English now. How can I help you?')
+      const confirmMsg = 'Perfect! I\'ll speak English now. How can I help you? Feel free to ask me any questions about your eye test.'
+      speak(confirmMsg)
       return
     }
     
@@ -901,18 +1131,55 @@ const VoiceBot = ({
       }
     }
     
-    // More conversational responses like ChatGPT - bilingual support
-    if (lowerCommand.includes('hello') || lowerCommand.includes('hi') || lowerCommand.includes('jambo') || lowerCommand.includes('habari')) {
-      if (language === 'sw') {
-        speak('Jambo! Mimi ni Quick Optics AI, msaidizi wako wa afya ya macho. Niko hapa kukusaidia katika uchunguzi wako wa macho. Unajisikiaje kuhusu mtihani huu?')
-      } else {
-        speak('Hello! I\'m Quick Optics AI, your virtual eye care assistant. I\'m here to guide you through your vision examination. How are you feeling about the test today?')
-      }
+    // Wake up from quiet mode with hello/hi
+    if ((lowerCommand.includes('hello') || lowerCommand.includes('hi') || 
+         lowerCommand.includes('jambo') || lowerCommand.includes('habari')) && isQuietMode) {
+      setIsQuietMode(false)
+      setIsActive(true)
+      
+      const wakeMsg = language === 'sw'
+        ? 'Jambo! Nimerudi. Ninaweza kukusaidia vipi?'
+        : 'Hello! I\'m back. How can I help you?'
+      
+      conversationAI.addToHistory('user', command)
+      conversationAI.addToHistory('bot', wakeMsg)
+      speak(wakeMsg)
+      
+      // Start listening after wake up
+      setTimeout(() => {
+        if (recognitionRef.current && isActive && !isQuietMode) {
+          try {
+            recognitionRef.current.start()
+            setIsListening(true)
+          } catch (error) {
+            console.log('Error starting recognition after wake:', error)
+          }
+        }
+      }, 2000)
+      
+      return
+    }
+    
+    // More conversational responses like ChatGPT - bilingual support with AI
+    if (!isQuietMode && (lowerCommand.includes('hello') || lowerCommand.includes('hi') || lowerCommand.includes('jambo') || lowerCommand.includes('habari'))) {
+      conversationAI.addToHistory('user', command)
+      const context = conversationAI.getContext()
+      context.language = language
+      const response = conversationAI.generateNaturalResponse('greeting', context)
+      conversationAI.addToHistory('bot', response)
+      speak(response)
     } else if (lowerCommand.includes('nervous') || lowerCommand.includes('scared') || lowerCommand.includes('worried') ||
                lowerCommand.includes('hofu') || lowerCommand.includes('wasiwasi') || lowerCommand.includes('ogopa')) {
-      speak(language === 'sw'
-        ? 'Naelewa kabisa hisia zako. Uchunguzi wa macho unaweza kuonekana kuwa wa kutisha, lakini nataka kukuhakikishia kuwa huu hauna maumivu na ni salama. Fikiria kama kuchukua picha ya kujipiga ambayo inaweza kutuambia kuhusu afya ya macho yako. Nitakuwa nawe kila hatua.'
-        : 'I completely understand those feelings. Eye exams can seem intimidating, but I want to assure you this is completely painless and safe. Think of it like taking a smart selfie that can tell us about your eye health. I\'ll be with you every step of the way.')
+      conversationAI.addToHistory('user', command)
+      const context = conversationAI.getContext()
+      context.language = language
+      context.userMood = 'nervous'
+      const response = conversationAI.generateNaturalResponse('empathetic', context)
+      const additional = language === 'sw'
+        ? ' Uchunguzi huu hauna maumivu na ni salama kabisa. Fikiria kama kuchukua picha ya kujipiga ambayo inaweza kutuambia kuhusu afya ya macho yako. Nitakuwa nawe kila hatua.'
+        : ' This test is completely painless and safe. Think of it like taking a smart selfie that can tell us about your eye health. I\'ll be with you every step of the way.'
+      conversationAI.addToHistory('bot', response + additional)
+      speak(response + additional)
     } else if (lowerCommand.includes('how long') || lowerCommand.includes('duration') || lowerCommand.includes('time') ||
                lowerCommand.includes('muda gani') || lowerCommand.includes('lini') || lowerCommand.includes('wakati')) {
       speak(language === 'sw'
@@ -968,26 +1235,100 @@ const VoiceBot = ({
         ? 'Bila shaka! Mimi ni Quick Optics AI, na niko hapa kufanya hii iwe rahisi iwezekanavyo. Unaweza kuniuliza chochote kuhusu mtihani, afya ya macho yako, au tu zungumza nami ikiwa una wasiwasi. Ungependa kujua nini?'
         : 'Of course! I\'m Quick Optics AI, and I\'m here to make this as easy as possible. You can ask me anything about the test, your eye health, or just chat with me if you\'re nervous. What would you like to know?')
     } else if (lowerCommand.includes('next') || lowerCommand.includes('continue') ||
-               lowerCommand.includes('ijayo') || lowerCommand.includes('endelea')) {
-      speak(language === 'sw'
-        ? 'Sawa! Tuendelee na tathmini yako ya macho.'
-        : 'Perfect! Let\'s move forward with your vision assessment.')
+               lowerCommand.includes('ijayo') || lowerCommand.includes('endelea') ||
+               lowerCommand.includes('next level') || lowerCommand.includes('next phase') ||
+               lowerCommand.includes('hatua ijayo') || lowerCommand.includes('kiwango kijacho')) {
+      // Check if we're in a test and can proceed
+      if (mode === 'test' && testType === 'eye-scan') {
+        speak(language === 'sw'
+          ? 'Sawa! Nitakuongoza kwa hatua ijayo ya uchunguzi wako wa macho. Tafadhali subiri kidogo nikiandaa mfumo.'
+          : 'Perfect! I\'ll guide you to the next phase of your eye examination. Please hold on a moment while I prepare the system.')
+      } else {
+        speak(language === 'sw'
+          ? 'Sawa! Tuendelee na tathmini yako ya macho.'
+          : 'Perfect! Let\'s move forward with your vision assessment.')
+      }
+    } else if (lowerCommand.includes('what phase') || lowerCommand.includes('what level') ||
+               lowerCommand.includes('where am i') || lowerCommand.includes('current phase') ||
+               lowerCommand.includes('hatua gani') || lowerCommand.includes('kiwango gani') ||
+               lowerCommand.includes('uko wapi')) {
+      // Provide context about current phase
+      const phaseInfo = language === 'sw'
+        ? 'Tuko katika uchunguzi wako wa macho. Nitakuongoza hatua kwa hatua - kwanza tutachunguza jicho la kushoto, kisha jicho la kulia, na mwishowe tutalinganisha matokeo. Nitaeleza kila hatua tunapoendelea.'
+        : 'We\'re in your eye examination. I\'ll guide you step by step - first we\'ll examine your left eye, then your right eye, and finally we\'ll compare the results. I\'ll explain each step as we go.'
+      speak(phaseInfo)
+    } else if (lowerCommand.includes('test') && (lowerCommand.includes('what') || lowerCommand.includes('explain') ||
+               lowerCommand.includes('mtihani') && (lowerCommand.includes('nini') || lowerCommand.includes('eleza')))) {
+      // Explain what the test does
+      const testExplanation = language === 'sw'
+        ? 'Mtihani huu unatumia kamera ya kifaa chako kuchukua picha za macho yako. AI yetu inachambua picha hizi kwa ishara za hali za kawaida za kuona kama ulemavu wa kuona wa karibu, glaukoma, au matatizo mengine. Ni rahisi, haraka, na hauna maumivu kabisa.'
+        : 'This test uses your device\'s camera to take pictures of your eyes. Our AI analyzes these images for signs of common vision conditions like nearsightedness, glaucoma, or other issues. It\'s simple, quick, and completely painless.'
+      speak(testExplanation)
     } else if (lowerCommand.includes('thank you') || lowerCommand.includes('thanks') ||
                lowerCommand.includes('asante') || lowerCommand.includes('shukrani')) {
       speak(language === 'sw'
         ? 'Karibu sana! Niko hapa kukusaidia. Kujihudumia macho yako ni muhimu, na ninafurahi kuwa naweza kuwa sehemu ya safari hiyo nawe.'
         : 'You\'re so welcome! I\'m here to help. Taking care of your vision is important, and I\'m glad I can be part of that journey with you.')
     } else if (lowerCommand.includes('stop') || lowerCommand.includes('quiet') || lowerCommand.includes('pause') ||
-               lowerCommand.includes('acha') || lowerCommand.includes('nyamaza') || lowerCommand.includes('pumzika')) {
-      speak(language === 'sw'
-        ? 'Bila shaka, nitanyamaza sasa. Bofya kitufe cha mikrofoni ikiwa unanihitaji tena.'
-        : 'Of course, I\'ll be quiet now. Just tap the microphone button if you need me again.')
+               lowerCommand.includes('silence') || lowerCommand.includes('shut up') || lowerCommand.includes('be quiet') ||
+               lowerCommand.includes('acha') || lowerCommand.includes('nyamaza') || lowerCommand.includes('pumzika') ||
+               lowerCommand.includes('acha kuzungumza')) {
+      // Enter quiet mode - bot will stay quiet until explicitly activated
+      setIsQuietMode(true)
       setIsActive(false)
       setIsQuestionMode(false)
+      setIsListening(false)
+      
       if (recognitionRef.current) {
         recognitionRef.current.stop()
       }
-      setIsListening(false)
+      
+      // Cancel any ongoing speech
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
+      
+      // Speak confirmation before going quiet (this will be the last thing it says)
+      const quietMsg = language === 'sw'
+        ? 'Sawa, nitanyamaza sasa. Sema "hujambo" au "hello" ikiwa unanihitaji tena.'
+        : 'Okay, I\'ll be quiet now. Just say "hello" or "wake up" when you need me again.'
+      
+      // Use direct speech synthesis to ensure message is spoken before going quiet
+      if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(quietMsg)
+        window.speechSynthesis.speak(utterance)
+      }
+      
+      return
+    } else if ((lowerCommand.includes('wake up') || lowerCommand.includes('wake') || 
+                lowerCommand.includes('activate') || lowerCommand.includes('come back') || 
+                lowerCommand.includes('resume') || lowerCommand.includes('amka') || 
+                lowerCommand.includes('fungua') || lowerCommand.includes('rudia')) && isQuietMode) {
+      // Wake up from quiet mode
+      setIsQuietMode(false)
+      setIsActive(true)
+      
+      const wakeMsg = language === 'sw'
+        ? 'Jambo! Nimerudi. Ninaweza kukusaidia vipi?'
+        : 'Hello! I\'m back. How can I help you?'
+      
+      conversationAI.addToHistory('user', command)
+      conversationAI.addToHistory('bot', wakeMsg)
+      speak(wakeMsg)
+      
+      // Start listening after wake up
+      setTimeout(() => {
+        if (recognitionRef.current && isActive && !isQuietMode) {
+          try {
+            recognitionRef.current.start()
+            setIsListening(true)
+          } catch (error) {
+            console.log('Error starting recognition after wake:', error)
+          }
+        }
+      }, 2000)
+      
+      return
     } else {
       // More natural fallback (Bilingual)
       const fallbackMessages = language === 'sw' ? [
@@ -999,10 +1340,99 @@ const VoiceBot = ({
         'I\'m sorry, I didn\'t quite catch that. Could you try saying it again or explain it differently? I\'m here to help.',
         'I think I might have missed that. Could you try saying it again? I\'m here to help with any questions about your vision test.'
       ]
-      speak(fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)])
+      const fallbackResponse = fallbackMessages[Math.floor(Math.random() * fallbackMessages.length)]
+      
+      // Learn from unclear interaction
+      adaptiveLearning.learnFromInteraction({
+        type: 'command',
+        input: command,
+        response: fallbackResponse,
+        feedback: 'neutral',
+        outcome: 'partial',
+        metadata: {
+          language,
+          mode,
+          wasUnclear: true
+        }
+      })
+      
+      speak(fallbackResponse)
     }
   }
 
+  // Generate adaptive questions based on user answers
+  const generateAdaptiveQuestions = (currentQuestion, understanding, userProfile) => {
+    const adaptiveQuestions = []
+    const isSwahili = language === 'sw'
+    
+    // If user mentions symptoms, ask for more details
+    if (currentQuestion?.key === 'symptoms' && (understanding.isYes || understanding.hasDetails)) {
+      const answer = understanding.rawAnswer.toLowerCase()
+      if (answer.includes('blurry') || answer.includes('fifia')) {
+        adaptiveQuestions.push({
+          question: isSwahili
+            ? 'Unasema kuona kuna fifia. Hii inatokea wakati gani - karibu, mbali, au zote mbili?'
+            : 'You mentioned blurry vision. When does this happen - up close, far away, or both?',
+          key: 'blurryDetails'
+        })
+      }
+      if (answer.includes('headache') || answer.includes('kichwa')) {
+        adaptiveQuestions.push({
+          question: isSwahili
+            ? 'Unasema maumivu ya kichwa. Hii inatokea mara ngapi - kila siku, mara kwa mara, au mara chache?'
+            : 'You mentioned headaches. How often does this happen - daily, occasionally, or rarely?',
+          key: 'headacheFrequency'
+        })
+      }
+    }
+    
+    // If user wears glasses, ask about prescription
+    if (currentQuestion?.key === 'correctiveLenses' && understanding.isYes) {
+      const answer = understanding.rawAnswer.toLowerCase()
+      if (!answer.includes('prescription') && !answer.includes('strength') && !/\d+/.test(answer)) {
+        adaptiveQuestions.push({
+          question: isSwahili
+            ? 'Je, unajua nguvu ya miwani yako? Hii inasaidia kufasiri matokeo kwa usahihi.'
+            : 'Do you know the strength of your glasses? This helps interpret results more accurately.',
+          key: 'prescriptionStrength'
+        })
+      }
+    }
+    
+    return adaptiveQuestions
+  }
+  
+  // Get eye movement context from window (set by EyeScan component)
+  const getEyeMovementContext = () => {
+    if (window.eyeMovementData) {
+      const data = window.eyeMovementData
+      eyeMovementRef.current = {
+        gazePoints: data.gazePoints || [],
+        movements: data.movements || [],
+        stability: data.stability || 0,
+        blinkRate: data.blinkRate || 0
+      }
+      return eyeMovementRef.current
+    }
+    return null
+  }
+  
+  // Update eye movement data (called by EyeScan component)
+  useEffect(() => {
+    const updateEyeData = () => {
+      if (window.eyeMovementData) {
+        getEyeMovementContext()
+      }
+    }
+    
+    // Listen for eye movement updates
+    window.addEventListener('eyeMovementUpdate', updateEyeData)
+    
+    return () => {
+      window.removeEventListener('eyeMovementUpdate', updateEyeData)
+    }
+  }, [])
+  
   const toggleListening = () => {
     if (!recognitionRef.current) return
     
@@ -1033,7 +1463,37 @@ const VoiceBot = ({
     }
   }
 
-  // Expose functions globally for other components
+  // Register with VoiceBot context for synchronization
+  useEffect(() => {
+    const instance = {
+      speak,
+      queueSpeech,
+      provideGuidance: (text) => speak(text),
+      startQuestions: startTestQuestions,
+      analyzeScreen: (content) => screenAnalyzer.analyze(content),
+      deactivate: () => {
+        setIsActive(false)
+        if (recognitionRef.current) {
+          recognitionRef.current.stop()
+        }
+        setIsListening(false)
+      }
+    }
+    
+    voiceBotContext.registerInstance(instance)
+    voiceBotContext.updateContext(mode, { testType, screenContent })
+    
+    // Update context when mode or content changes
+    if (isActive) {
+      voiceBotContext.setIsActive(true)
+    }
+
+    return () => {
+      voiceBotContext.unregisterInstance(instance)
+    }
+  }, [mode, testType, screenContent, isActive])
+
+  // Expose functions globally for backward compatibility
   useEffect(() => {
     window.voiceBot = {
       speak,
@@ -1085,81 +1545,31 @@ const VoiceBot = ({
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0, opacity: 0 }}
     >
-      <div className="voice-bot-main">
-        <div className="voice-bot-header">
-            <div className="voice-bot-info">
-            <div className="voice-bot-avatar">👁️</div>
-            <div>
-              <div className="voice-bot-name">Quick Optics AI</div>
-              <div className="voice-bot-status">
-                {isSpeaking ? 'Speaking...' : isListening ? 'Listening...' : 'Ready to help'}
-              </div>
-            </div>
-          </div>
-          <div className="voice-bot-controls">
-            <button
-              className="language-toggle"
-              onClick={() => {
-                const newLang = language === 'en' ? 'sw' : 'en'
-                setLanguage(newLang)
-                if (newLang === 'sw') {
-                  speak('Sawa! Nitaongea Kiswahili sasa.')
-                } else {
-                  speak('Okay! I\'ll speak English now.')
-                }
-              }}
-              title={language === 'en' ? 'Switch to Swahili' : 'Switch to English'}
-            >
-              {language === 'en' ? '🇬🇧 EN' : '🇰🇪 SW'}
-            </button>
-            <button
-              className="voice-bot-close"
-              onClick={toggleBot}
-              title="Close Quick Optics AI"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <motion.div
-          className={`mic-button ${isSpeaking ? 'speaking' : ''} ${isListening ? 'listening' : ''}`}
-          onClick={toggleListening}
-          animate={{
-            scale: isSpeaking ? [1, 1.1, 1] : isListening ? [1, 1.05, 1] : 1,
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: (isSpeaking || isListening) ? Infinity : 0,
-            ease: 'easeInOut'
-          }}
-        >
-          <span className="mic-icon-large">
-            {isSpeaking ? '🔊' : isListening ? '👂' : '🎤'}
-          </span>
-          {(isSpeaking || isListening) && (
-            <motion.div
-              className="sound-waves"
-              initial={{ scale: 0 }}
-              animate={{ scale: [1, 1.5, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-            />
-          )}
-        </motion.div>
-        
-        <div className="voice-bot-instructions">
-          <p>
-            {isListening 
-              ? "Listening..." 
-              : isSpeaking 
-              ? "Speaking..."
-              : isQuestionMode && currentQuestion
-              ? "Please answer the question above."
-              : "Ready to help with your vision test."
-            }
-          </p>
-        </div>
-      </div>
+      <motion.button
+        className={`voice-bot-minimal ${isSpeaking ? 'speaking' : ''} ${isListening ? 'listening' : ''}`}
+        onClick={toggleBot}
+        animate={{
+          scale: isSpeaking ? [1, 1.1, 1] : isListening ? [1, 1.05, 1] : 1,
+        }}
+        transition={{
+          duration: 1.5,
+          repeat: (isSpeaking || isListening) ? Infinity : 0,
+          ease: 'easeInOut'
+        }}
+        title={isSpeaking ? 'Speaking...' : isListening ? 'Listening...' : 'Voice Guide'}
+      >
+        <span className="voice-icon">
+          {isSpeaking ? '🔊' : isListening ? '👂' : '🎤'}
+        </span>
+        {(isSpeaking || isListening) && (
+          <motion.div
+            className="sound-waves"
+            initial={{ scale: 0 }}
+            animate={{ scale: [1, 1.5, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+          />
+        )}
+      </motion.button>
     </motion.div>
   )
 }

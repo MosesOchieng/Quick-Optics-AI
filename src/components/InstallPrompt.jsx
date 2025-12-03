@@ -9,17 +9,41 @@ const InstallPrompt = () => {
   const [isStandalone, setIsStandalone] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [isDismissed, setIsDismissed] = useState(false)
+  const [isReinstall, setIsReinstall] = useState(false)
 
   useEffect(() => {
-    // Check if already installed or dismissed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    // Check if already installed
+    const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches ||
+                            (window.navigator.standalone === true) ||
+                            document.referrer.includes('android-app://')
+    
+    if (isStandaloneMode) {
       setIsStandalone(true)
+      // Mark as installed for future detection
+      localStorage.setItem('pwa-installed', 'true')
+      localStorage.setItem('pwa-installed-time', Date.now().toString())
       return
+    }
+
+    // Detect if app was previously installed but now removed (Android reinstall scenario)
+    const wasInstalled = localStorage.getItem('pwa-installed') === 'true'
+    const installTime = localStorage.getItem('pwa-installed-time')
+    const isAndroid = /Android/.test(navigator.userAgent)
+    
+    // If was installed but not in standalone mode now, it was likely removed
+    if (wasInstalled && isAndroid && !isStandaloneMode) {
+      console.log('App was previously installed but appears to be removed - showing reinstall prompt')
+      setIsReinstall(true)
+      // Clear the installed flag and show prompt immediately
+      localStorage.removeItem('pwa-installed')
+      localStorage.removeItem('pwa-installed-time')
+      // Show prompt faster for reinstall scenario
+      setTimeout(() => setShowPrompt(true), 2000)
     }
 
     // Check if user previously dismissed
     const dismissed = localStorage.getItem('install-prompt-dismissed')
-    if (dismissed) {
+    if (dismissed && !wasInstalled) {
       const dismissedTime = parseInt(dismissed)
       const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24)
       if (daysSinceDismissed < 7) { // Don't show again for 7 days
@@ -27,34 +51,110 @@ const InstallPrompt = () => {
       }
     }
 
-    // Check if iOS
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
-    setIsIOS(iOS)
+    // Enhanced iOS detection - check multiple methods
+    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
+    const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+    const isIOS = isIOSDevice || isIPadOS || (isSafari && /iPhone|iPad|iPod/.test(navigator.userAgent))
+    
+    setIsIOS(isIOS)
 
     // Handle beforeinstallprompt event (Chrome/Edge on Android/Desktop)
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault()
       setDeferredPrompt(e)
-      setTimeout(() => setShowPrompt(true), 5000) // Show after 5 seconds
+      // Show prompt after shorter delay if we have the event
+      setTimeout(() => setShowPrompt(true), 3000) // Show after 3 seconds
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
 
-    // For iOS, show after delay
-    if (iOS) {
-      const iosTimer = setTimeout(() => setShowPrompt(true), 8000) // Show after 8 seconds on iOS
+    // For iOS, show prompt more reliably
+    let iosTimer = null
+    let interactionHandlers = []
+    let hasShownIOSPrompt = false
+    
+    if (isIOS) {
+      // More aggressive iOS prompt - show after any interaction or page load
+      const showIOSPrompt = () => {
+        if (hasShownIOSPrompt) return
+        hasShownIOSPrompt = true
+        
+        // Check if already dismissed recently
+        const dismissed = localStorage.getItem('install-prompt-dismissed')
+        if (dismissed) {
+          const dismissedTime = parseInt(dismissed)
+          const hoursSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60)
+          if (hoursSinceDismissed < 24) { // Don't show again for 24 hours
+            return
+          }
+        }
+        
+        iosTimer = setTimeout(() => {
+          setShowPrompt(true)
+        }, 3000) // Show after 3 seconds of interaction
+      }
+      
+      const handleInteraction = () => {
+        showIOSPrompt()
+        // Clean up interaction listeners after first interaction
+        interactionHandlers.forEach(({ event, handler }) => {
+          window.removeEventListener(event, handler)
+        })
+        interactionHandlers = []
+      }
+      
+      // Show after page load
+      if (document.readyState === 'complete') {
+        showIOSPrompt()
+      } else {
+        const loadHandler = () => showIOSPrompt()
+        window.addEventListener('load', loadHandler)
+        interactionHandlers.push({ event: 'load', handler: loadHandler })
+      }
+      
+      // Show after first user interaction (click, touch, scroll)
+      const clickHandler = handleInteraction
+      const touchHandler = handleInteraction
+      const scrollHandler = handleInteraction
+      
+      window.addEventListener('click', clickHandler, { once: true, passive: true })
+      window.addEventListener('touchstart', touchHandler, { once: true, passive: true })
+      window.addEventListener('scroll', scrollHandler, { once: true, passive: true })
+      
+      interactionHandlers.push(
+        { event: 'click', handler: clickHandler },
+        { event: 'touchstart', handler: touchHandler },
+        { event: 'scroll', handler: scrollHandler }
+      )
+      
       return () => {
         window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-        clearTimeout(iosTimer)
+        if (iosTimer) clearTimeout(iosTimer)
+        interactionHandlers.forEach(({ event, handler }) => {
+          window.removeEventListener(event, handler)
+        })
       }
     } else {
-      // For other browsers, show as fallback
+      // For Android/other browsers, show as fallback
+      let hasDeferredPrompt = false
+      const originalHandler = handleBeforeInstallPrompt
+      const wrappedHandler = (e) => {
+        hasDeferredPrompt = true
+        originalHandler(e)
+      }
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.addEventListener('beforeinstallprompt', wrappedHandler)
+      
       const fallbackTimer = setTimeout(() => {
-        setShowPrompt(true)
-      }, 10000) // Show after 10 seconds as fallback
+        // Only show if we don't have deferredPrompt (Android) or it's been a while
+        if (!hasDeferredPrompt) {
+          setShowPrompt(true)
+        }
+      }, 8000) // Show after 8 seconds as fallback
 
       return () => {
-        window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+        window.removeEventListener('beforeinstallprompt', wrappedHandler)
         clearTimeout(fallbackTimer)
       }
     }
@@ -62,15 +162,23 @@ const InstallPrompt = () => {
 
   const handleInstall = async () => {
     if (deferredPrompt) {
-      deferredPrompt.prompt()
-      const { outcome } = await deferredPrompt.userChoice
-      
-      if (outcome === 'accepted') {
-        console.log('User accepted the install prompt')
-        setShowPrompt(false)
+      try {
+        deferredPrompt.prompt()
+        const { outcome } = await deferredPrompt.userChoice
+        
+        if (outcome === 'accepted') {
+          console.log('User accepted the install prompt')
+          // Mark as installed
+          localStorage.setItem('pwa-installed', 'true')
+          localStorage.setItem('pwa-installed-time', Date.now().toString())
+          setShowPrompt(false)
+        }
+        
+        setDeferredPrompt(null)
+      } catch (error) {
+        console.error('Error during install:', error)
+        // If install fails, still allow user to try again
       }
-      
-      setDeferredPrompt(null)
     }
   }
 
@@ -109,8 +217,12 @@ const InstallPrompt = () => {
                   <div className="install-badge">+</div>
                 </div>
                 <div className="floating-text">
-                  <div className="floating-title">Install App</div>
-                  <div className="floating-subtitle">Quick access & offline mode</div>
+                  <div className="floating-title">
+                    {isReinstall ? 'Reinstall App' : 'Install App'}
+                  </div>
+                  <div className="floating-subtitle">
+                    {isReinstall ? 'Get Quick Optics AI back on your device' : 'Quick access & offline mode'}
+                  </div>
                 </div>
                 <div className="floating-actions">
                   <button 

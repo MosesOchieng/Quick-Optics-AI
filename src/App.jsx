@@ -37,6 +37,7 @@ import ClinicSignup from './pages/ClinicSignup'
 import UserTypeSelection from './pages/UserTypeSelection'
 import Layout from './components/Layout'
 import InstallPrompt from './components/InstallPrompt'
+import { VoiceBotProvider } from './contexts/VoiceBotContext'
 
 function App() {
   useEffect(() => {
@@ -58,9 +59,15 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <Router>
-        <InstallPrompt />
-        <Layout>
+      <VoiceBotProvider>
+        <Router
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true
+          }}
+        >
+          <InstallPrompt />
+          <Layout>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/onboarding" element={<Onboarding />} />
@@ -118,6 +125,7 @@ function App() {
           </Routes>
         </Layout>
       </Router>
+      </VoiceBotProvider>
     </ErrorBoundary>
   )
 }

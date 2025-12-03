@@ -93,16 +93,15 @@ const ClinicSignup = () => {
     setLoading(true)
 
     try {
-      // Use clinic-specific signup endpoint if available
+      // Use clinic-specific signup endpoint
       const response = await api.clinicSignup({
         clinicName: formData.clinicName,
-        contactPerson: formData.contactPerson,
         email: formData.email,
+        password: formData.password,
         phone: formData.phone,
         licenseNumber: formData.licenseNumber,
         address: formData.address,
-        password: formData.password,
-        userType: 'clinic'
+        website: ''
       })
       
       setSuccessMessage('Clinic account created! Please verify your email.')

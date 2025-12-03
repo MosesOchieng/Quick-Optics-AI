@@ -21,6 +21,9 @@ const FaceDetector = ({
   const [confidence, setConfidence] = useState(0)
   const lastUpdateRef = useRef(0)
   const updateThrottleMs = 100 // Throttle state updates to every 100ms
+  const lastVideoRefLog = useRef(0)
+  const lastFaceMeshLog = useRef(0)
+  const processingActiveRef = useRef(false)
 
   useEffect(() => {
     loadFaceMesh()
@@ -44,6 +47,31 @@ const FaceDetector = ({
   const loadFaceMesh = async () => {
     // Prevent multiple initializations - use global flag
     if (faceMeshReadyRef.current || typeof window === 'undefined') return
+    
+    // Suppress MediaPipe dependency warnings during initialization
+    const originalWarn = console.warn
+    const suppressDependencyWarnings = () => {
+      console.warn = (...args) => {
+        const message = args.join(' ')
+        // Suppress MediaPipe dependency loading messages
+        if (message.includes('still waiting on run dependencies') || 
+            message.includes('dependency:') ||
+            message.includes('end of list')) {
+          return // Suppress these messages
+        }
+        originalWarn.apply(console, args)
+      }
+    }
+    
+    suppressDependencyWarnings()
+    
+    // Restore console.warn after initialization
+    const restoreConsole = () => {
+      setTimeout(() => {
+        console.warn = originalWarn
+      }, 5000) // Restore after 5 seconds
+    }
+    
     if (window.__faceMeshInitializing) {
       console.log('FaceDetector: MediaPipe already initializing, waiting...')
       // Wait for existing initialization
@@ -90,26 +118,49 @@ const FaceDetector = ({
 
       console.log('FaceDetector: Creating FaceMesh instance...')
       
-      // Fix for MediaPipe Module.arguments error - ensure Module is properly initialized
-      // MediaPipe uses Emscripten which expects Module to exist but not have arguments set
-      if (typeof window.Module === 'undefined') {
-        window.Module = {}
-      }
-      // Remove arguments if it exists to prevent the error
-      if (window.Module.arguments !== undefined) {
-        delete window.Module.arguments
-      }
+      // Fix for MediaPipe Module.arguments error
+      // MediaPipe uses Emscripten which manages Module internally
+      // We must NOT touch Module.arguments or Module.arguments_ - let MediaPipe handle it
+      // The error occurs when we try to access Module.arguments after MediaPipe has initialized
       
-      // Wait a bit for MediaPipe to fully load before initializing
-      await new Promise(resolve => setTimeout(resolve, 200))
+      // Wait for MediaPipe script to fully load
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      // Additional wait for WASM and model files to be ready
+      let dependencyWaitAttempts = 0
+      while (dependencyWaitAttempts < 30) {
+        if (window.FaceMesh && typeof window.FaceMesh === 'function') {
+          break
+        }
+        await new Promise(resolve => setTimeout(resolve, 100))
+        dependencyWaitAttempts++
+      }
       
       try {
-        faceMeshRef.current = new window.FaceMesh({
-          locateFile: (file) => {
-            const url = `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-            return url
+      // Create FaceMesh - MediaPipe will handle Module setup internally
+      // Do NOT access or modify window.Module before or after this
+      faceMeshRef.current = new window.FaceMesh({
+        locateFile: (file) => {
+          // Handle different file types and paths
+          if (file.includes('.tflite')) {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+          } else if (file.includes('.wasm')) {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+          } else if (file.includes('.data')) {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+          } else if (file.includes('.binarypb')) {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
           }
-        })
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        },
+        // Add error handler for dependency loading
+        onError: (error) => {
+          // Suppress dependency loading warnings - they're normal during initialization
+          if (!error.message || !error.message.includes('dependency')) {
+            console.warn('FaceDetector: MediaPipe error:', error)
+          }
+        }
+      })
         // Store globally to prevent multiple instances
         window.__faceMeshInstance = faceMeshRef.current
       } catch (initError) {
@@ -133,6 +184,7 @@ const FaceDetector = ({
       window.__faceMeshInitializing = false
       
       console.log('FaceDetector: MediaPipe FaceMesh initialized successfully')
+      restoreConsole() // Restore console after successful initialization
       
       // Start processing after a short delay to ensure video is ready
       setTimeout(() => {
@@ -158,17 +210,21 @@ const FaceDetector = ({
         }
       }, 300)
     } catch (error) {
+      restoreConsole() // Restore console on error
       console.error('FaceDetector: FaceMesh failed to load:', error)
       // Try to provide helpful error information
-      if (error.message.includes('network')) {
+      if (error.message && error.message.includes('network')) {
         console.error('Network error - check internet connection')
-      } else if (error.message.includes('CORS')) {
+      } else if (error.message && error.message.includes('CORS')) {
         console.error('CORS error - MediaPipe CDN may be blocked')
       }
     }
   }
 
   const startProcessing = () => {
+    if (processingActiveRef.current) return // Prevent multiple processing loops
+    processingActiveRef.current = true
+    
     let lastProcessTime = 0
     // Balanced throttle for mobile/low-end devices - process every 300ms (~3fps)
     // This reduces memory usage while still allowing face detection to work
@@ -189,7 +245,21 @@ const FaceDetector = ({
       
       lastProcessTime = timestamp
       
-      if (videoRef.current && faceMeshRef.current && faceMeshReadyRef.current) {
+      // Check if video ref is available and valid
+      if (!videoRef.current) {
+        // Video not mounted yet - continue checking but don't process
+        animationFrameRef.current = requestAnimationFrame(processFrame)
+        return
+      }
+      
+      // Check if video is actually ready
+      if (videoRef.current.readyState < 2) {
+        // Video not loaded yet - continue checking
+        animationFrameRef.current = requestAnimationFrame(processFrame)
+        return
+      }
+      
+      if (faceMeshRef.current && faceMeshReadyRef.current) {
         const video = videoRef.current
         // Process when video is ready
         if (video.readyState >= video.HAVE_CURRENT_DATA && video.videoWidth > 0) {
@@ -228,25 +298,36 @@ const FaceDetector = ({
             }
           }
         } else {
-          // Video not ready - log for debugging
-          if (video.readyState === 0) {
-            console.log('FaceDetector: Video not loaded, readyState:', video.readyState)
-          }
+          // Video not ready - silently continue
         }
       } else {
-        // Log what's missing for debugging
-        if (!videoRef.current) console.log('FaceDetector: Video ref not available')
-        if (!faceMeshRef.current) console.log('FaceDetector: FaceMesh not initialized')
-        if (!faceMeshReadyRef.current) console.log('FaceDetector: FaceMesh not ready')
+        // FaceMesh not ready yet - silently continue checking
+        // Only log once every 5 seconds to reduce console noise
+        const now = Date.now()
+        if (!videoRef.current && (!lastVideoRefLog.current || now - lastVideoRefLog.current > 5000)) {
+          lastVideoRefLog.current = now
+          // Video ref will be available when video element is mounted - this is normal
+        }
+        if (!faceMeshRef.current && (!lastFaceMeshLog.current || now - lastFaceMeshLog.current > 5000)) {
+          lastFaceMeshLog.current = now
+          // FaceMesh still initializing - this is normal during startup
+        }
       }
       // Continue processing with throttling
       animationFrameRef.current = requestAnimationFrame(processFrame)
     }
     
     // Start processing with delay to allow initialization
-    setTimeout(() => {
-      animationFrameRef.current = requestAnimationFrame(processFrame)
-    }, 200)
+    // Only start if video ref is available
+    const startWhenReady = () => {
+      if (videoRef.current && videoRef.current.readyState >= 2) {
+        animationFrameRef.current = requestAnimationFrame(processFrame)
+      } else {
+        // Check again in 100ms
+        setTimeout(startWhenReady, 100)
+      }
+    }
+    setTimeout(startWhenReady, 500)
   }
 
   const getAlignmentGuidance = (horizontalOffset, verticalOffset) => {

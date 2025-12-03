@@ -74,131 +74,14 @@
   z-index: 1000;
 }
 
-.voice-bot-main {
-  background: var(--white);
-  border-radius: 20px;
-  padding: 1.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  min-width: 280px;
-  border: 2px solid var(--primary-teal);
-  position: relative;
-  backdrop-filter: blur(10px);
-}
-
-.voice-bot-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-  justify-content: space-between;
-}
-
-.voice-bot-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.language-toggle {
-  background: var(--primary-teal);
-  color: var(--white);
-  border: none;
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.language-toggle:hover {
-  background: var(--primary-teal-dark);
-  transform: scale(1.05);
-}
-
-.language-toggle:active {
-  transform: scale(0.95);
-}
-
-.voice-bot-info {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.voice-bot-avatar {
-  width: 45px;
-  height: 45px;
-  background: var(--primary-teal);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  color: white;
-}
-
-.voice-bot-name {
-  font-weight: 700;
-  color: var(--gray-900);
-  font-size: 1.1rem;
-}
-
-.voice-bot-status {
-  font-size: 0.8rem;
-  color: var(--gray-600);
-  margin-top: 0.25rem;
-}
-
-.voice-bot-close {
-  background: none;
-  border: none;
-  font-size: 1.2rem;
-  color: var(--gray-500);
-  cursor: pointer;
-  padding: 0.25rem;
-  border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.voice-bot-close:hover {
-  background: var(--gray-100);
-  color: var(--gray-700);
-}
-
-.voice-bot-instructions {
-  text-align: center;
-  width: 100%;
-}
-
-.voice-bot-instructions p {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--gray-600);
-  line-height: 1.4;
-}
-
-.mic-button {
-  width: 80px;
-  height: 80px;
+.voice-bot-minimal {
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: none;
   background: linear-gradient(135deg, var(--primary-teal) 0%, var(--primary-teal-dark) 100%);
   color: var(--white);
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -206,21 +89,36 @@
   position: relative;
   box-shadow: 0 4px 20px rgba(20, 184, 166, 0.4);
   transition: all 0.3s ease;
+  padding: 0;
 }
 
-.mic-button:hover {
+.voice-bot-minimal:hover {
   box-shadow: 0 6px 30px rgba(20, 184, 166, 0.6);
+  transform: scale(1.05);
 }
 
-.mic-button.speaking {
+.voice-bot-minimal.speaking {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
-.mic-button.listening {
+.voice-bot-minimal.listening {
   background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
   animation: pulse 1s ease-in-out infinite;
 }
+
+.voice-icon {
+  font-size: 1.5rem;
+  z-index: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Removed unused styles - using minimal design */
+
+/* Removed - using voice-bot-minimal instead */
 
 @keyframes pulse {
   0%, 100% {
@@ -236,41 +134,14 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 3px solid var(--primary-teal);
-  opacity: 0.6;
-}
-
-.mic-icon-large {
-  font-size: 2.5rem;
-  z-index: 1;
-  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  opacity: 0.8;
+  top: 0;
+  left: 0;
 }
 
 
-.voice-bot-close {
-  position: absolute;
-  top: -0.5rem;
-  right: -0.5rem;
-  background: var(--white);
-  border: 2px solid var(--gray-200);
-  font-size: 1.25rem;
-  color: var(--gray-600);
-  cursor: pointer;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.voice-bot-close:hover {
-  background: var(--gray-100);
-  color: var(--gray-800);
-  transform: scale(1.1);
-}
+/* Removed - using minimal design */
 
 .toggle-label {
   font-weight: 600;
@@ -283,15 +154,21 @@
     right: 1rem;
   }
 
-  .mic-button {
-    width: 70px;
-    height: 70px;
-    font-size: 2rem;
+  .voice-bot-minimal {
+    width: 45px;
+    height: 45px;
+    font-size: 1.3rem;
   }
 
-  .mic-icon-large {
-    font-size: 2rem;
+  .voice-icon {
+    font-size: 1.3rem;
   }
+}
+
+/* Hide any text labels - icon only */
+.voice-bot-minimal .toggle-label,
+.voice-bot-container .toggle-label {
+  display: none;
 }
 
 

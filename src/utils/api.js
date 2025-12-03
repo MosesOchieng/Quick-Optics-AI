@@ -96,9 +96,16 @@ export const api = {
   },
 
   async clinicSignup(clinicData) {
-    return apiRequest('/auth/clinic-signup', {
+    return apiRequest('/clinics/signup', {
       method: 'POST',
       body: clinicData
+    })
+  },
+
+  async clinicLogin(email, password) {
+    return apiRequest('/clinics/login', {
+      method: 'POST',
+      body: { email, password }
     })
   },
 
@@ -183,6 +190,37 @@ export const api = {
       method: 'POST',
       body: data
     })
+  },
+
+  // Clinic Management
+  async getClinicDashboard() {
+    return apiRequest('/clinics/dashboard')
+  },
+
+  async getClinicPatients() {
+    return apiRequest('/clinics/patients')
+  },
+
+  async assignPatientLicense(patientEmail, notes) {
+    return apiRequest('/clinics/patients/assign-license', {
+      method: 'POST',
+      body: { patientEmail, notes }
+    })
+  },
+
+  async revokePatientLicense(patientId) {
+    return apiRequest('/clinics/patients/revoke-license', {
+      method: 'POST',
+      body: { patientId }
+    })
+  },
+
+  async getPatientResults(patientId) {
+    return apiRequest(`/clinics/patients/${patientId}/results`)
+  },
+
+  async getClinicLicense() {
+    return apiRequest('/clinics/license')
   }
 }
 

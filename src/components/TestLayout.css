@@ -137,12 +137,16 @@
 }
 
 .instructions-card {
-  background: #1e293b;
-  border-radius: 1rem;
-  max-width: 500px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.98) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border-radius: 1.5rem;
+  max-width: 520px;
   width: 100%;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(20, 184, 166, 0.1),
+    0 0 40px rgba(20, 184, 166, 0.15);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 .instructions-header {
@@ -192,11 +196,17 @@
 }
 
 .instructions-content li {
-  padding: 0.75rem 0;
-  color: #cbd5e1;
-  font-size: 0.95rem;
-  line-height: 1.5;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.05);
+  padding: 1rem 0;
+  color: #e2e8f0;
+  font-size: 1rem;
+  line-height: 1.6;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  transition: all 0.2s ease;
+}
+
+.instructions-content li:hover {
+  color: #f1f5f9;
+  padding-left: 0.5rem;
 }
 
 .instructions-content li:last-child {

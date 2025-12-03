@@ -48,15 +48,8 @@ const ClinicLogin = () => {
     setLoading(true)
 
     try {
-      // Use clinic-specific endpoint if available, otherwise use regular login
-      const response = await api.login(formData.email, formData.password)
-      
-      // Verify this is a clinic account
-      if (response.user?.userType !== 'clinic' && response.user?.userType !== 'optometrist') {
-        setServerError('This account is not registered as a clinic. Please use patient login.')
-        setLoading(false)
-        return
-      }
+      // Use clinic-specific login endpoint
+      const response = await api.clinicLogin(formData.email, formData.password)
       
       localStorage.setItem('auth_token', response.token)
       localStorage.setItem('user', JSON.stringify(response.user))

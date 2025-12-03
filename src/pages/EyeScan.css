@@ -1390,31 +1390,101 @@
 
 .eye-overlay {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   pointer-events: none;
+  z-index: 5;
 }
 
 .eye-marker {
-  margin: 0 1rem;
-  width: 70px;
-  height: 45px;
-  border: 2px solid #00ffff;
+  position: absolute;
+  border: 2px solid rgba(20, 184, 166, 0.6);
   border-radius: 50%;
   animation: pulse-eye 2s ease-in-out infinite;
-  background: rgba(0, 255, 255, 0.1);
+  background: rgba(20, 184, 166, 0.05);
   transition: all 0.3s ease;
+  /* Default size - will be overridden by inline styles */
+  width: 50px;
+  height: 50px;
+  /* Ensure proper positioning */
+  transform: translate(-50%, -50%);
+}
+
+.eye-marker.left-eye {
+  border-color: rgba(59, 130, 246, 0.7);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.eye-marker.right-eye {
+  border-color: rgba(236, 72, 153, 0.7);
+  background: rgba(236, 72, 153, 0.08);
 }
 
 .eye-marker.detected {
-  border: 3px solid #00ff00;
-  background: rgba(0, 255, 0, 0.2);
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+  border: 3px solid #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
   animation: pulse-eye-detected 1.5s ease-in-out infinite;
+}
+
+.eye-marker.left-eye.detected {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+}
+
+.eye-marker.right-eye.detected {
+  border-color: #ec4899;
+  background: rgba(236, 72, 153, 0.2);
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.6);
+}
+
+@keyframes pulse-eye {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+}
+
+@keyframes pulse-eye-detected {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+/* Mobile responsive eye markers */
+@media (max-width: 768px) {
+  .eye-marker {
+    min-width: 35px;
+    min-height: 25px;
+    border-width: 2px;
+  }
+  
+  .eye-marker.detected {
+    border-width: 2.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .eye-marker {
+    min-width: 30px;
+    min-height: 20px;
+    border-width: 1.5px;
+  }
+  
+  .eye-marker.detected {
+    border-width: 2px;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+  }
 }
 
 @keyframes pulse-eye-detected {

@@ -15,6 +15,8 @@ const SWAHILI_VOICE_ID = VOICE_ID // Using same voice for now, can be changed to
 
 // Only initialize ElevenLabs client if API key is available
 let elevenlabs = null
+let hasLoggedMissingKey = false // Flag to prevent spam
+
 if (ELEVENLABS_API_KEY) {
   try {
     elevenlabs = new ElevenLabsClient({
@@ -64,7 +66,11 @@ export const speakWithElevenLabs = async (text, voiceId = VOICE_ID, language = n
   
   // If ElevenLabs is not configured or client is not initialized, use fallback immediately
   if (!ELEVENLABS_API_KEY || !elevenlabs) {
-    console.log('ElevenLabs API key not configured, using fallback TTS')
+    // Only log once to prevent console spam
+    if (!hasLoggedMissingKey) {
+      console.log('ElevenLabs API key not configured, using fallback TTS')
+      hasLoggedMissingKey = true
+    }
     fallbackTTS(text, language)
     return
   }
